@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="colorPrimary">#635D5C</color>
+    <color name="colorPrimaryDark">#3D2B3D</color>
+    <color name="colorAccent">#9B1D20</color>
+
+    <color name="colorMediaControlBackground">#0A0030</color>
+    <color name="colorTrackListBackgroundOne">#4B4B4B</color>
+    <color name="colorTrackListBackgroundTwo">#232323</color>
+    <color name="colorTrackListDivider">#AFAFAF</color>
+    <color name="colorTrackListText">#DCDCDC</color>
+</resources>
