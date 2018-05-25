@@ -10,7 +10,6 @@ import android.media.MediaPlayer;
 import android.net.Uri;
 import android.os.Binder;
 import android.os.IBinder;
-import android.os.PowerManager;
 import android.provider.MediaStore;
 import android.support.annotation.Nullable;
 import android.support.v4.app.NotificationCompat;
@@ -202,6 +201,14 @@ public class MusicPlayerService extends Service implements MediaPlayer.OnErrorLi
         repeatMode = RepeatMode.values()[(repeatMode.ordinal() + 1) % RepeatMode.values().length];
         if (callback != null)
             callback.onRepeatModeChanged(repeatMode);
+    }
+
+    public void setShuffle(boolean shuffle) {
+        this.shuffle = shuffle;
+    }
+
+    public void setRepeatMode(RepeatMode repeatMode) {
+        this.repeatMode = repeatMode;
     }
 
     public void setTracks(ArrayList<Track> tracks) {

@@ -73,6 +73,8 @@ public class MainActivity extends AppCompatActivity implements MusicServiceCallb
     private static final String KEY_TRACK_TIME  = "KEY_TRACK_TIME";
     private static final String KEY_PLAYING     = "KEY_PLAYING";
     private static final String KEY_TRACK_LIST  = "KEY_TRACK_LIST";
+    private static final String KEY_SHUFFLE_ON  = "KEY_SHUFFLE_ON";
+    private static final String KEY_REPEAT_MODE = "KEY_REPEAT_MODE";
 
     /**
      * Permission request constant for reading external storage
@@ -100,6 +102,12 @@ public class MainActivity extends AppCompatActivity implements MusicServiceCallb
      * A flag used to decide whether to stop the service in onStop
      */
     private boolean serviceRunning = false;
+
+    /** Is shuffle mode enabled on the service? */
+    private boolean shuffleEnabled = false;
+
+    /** The repeat mode on the service */
+    private RepeatMode repeatMode = RepeatMode.NONE;
 
     /** UI components */
     private ListView lstTracks;
@@ -169,7 +177,7 @@ public class MainActivity extends AppCompatActivity implements MusicServiceCallb
 
         // If the tracks haven't been passed in savedInstanceState, load them
         if (tracks == null)
-            tracks = initTrackList();
+            initTrackList();
 
         // If the trackIndex pulled from prefs is larger than the list size,
         // meaning the list has been changed - reset the index
@@ -313,13 +321,16 @@ public class MainActivity extends AppCompatActivity implements MusicServiceCallb
 
         // If the media player and the activity are stopped - stop the service and close the basta
         if (!serviceRunning) {
-            stopService(serviceIntent);
 
             // Save preferences
             prefs.edit()
                     .putInt(KEY_TRACK_INDEX, trackIndex)
                     .putInt(KEY_TRACK_TIME, trackTime)
+                    .putInt(KEY_REPEAT_MODE, repeatMode.ordinal())
+                    .putBoolean(KEY_SHUFFLE_ON, shuffleEnabled)
                     .apply();
+
+            stopService(serviceIntent);
         }
 
         // Stop the track timer thread to prevent unnecessary memory consumption
@@ -360,6 +371,10 @@ public class MainActivity extends AppCompatActivity implements MusicServiceCallb
             btnPlay.setImageDrawable(getDrawable(musicPlayerService.isPlaying()
                     ? android.R.drawable.ic_media_pause
                     : android.R.drawable.ic_media_play));
+
+            // TODO: Update the RepeatMode and shuffle buttons
+            shuffleEnabled = musicPlayerService.isShuffled();
+            repeatMode = musicPlayerService.getRepeatMode();
         }
 
     }
@@ -372,10 +387,16 @@ public class MainActivity extends AppCompatActivity implements MusicServiceCallb
             musicPlayerService.setTracks(tracks);
             musicPlayerService.setCallback(MainActivity.this);
 
-            // If the track index is not the default value - meaning it has been pulled from
-            // either savedInstanceState or prefs
+            // If these parameter don't have their default values,
+            // meaning they have been pulled from prefs, pass them to the service
             if (trackIndex != 0)
                 musicPlayerService.setTrackIndex(trackIndex);
+
+            if (shuffleEnabled)
+                musicPlayerService.setShuffle(true);
+
+            if (repeatMode != RepeatMode.NONE)
+                musicPlayerService.setRepeatMode(repeatMode);
 
             serviceBound = true;
 
@@ -400,8 +421,8 @@ public class MainActivity extends AppCompatActivity implements MusicServiceCallb
             bindService(serviceIntent, musicServiceConnection, BIND_AUTO_CREATE);
     }
 
-    private ArrayList<Track> initTrackList() {
-        ArrayList<Track> result = new ArrayList<>();
+    private void initTrackList() {
+        tracks = new ArrayList<>();
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
 
@@ -428,7 +449,7 @@ public class MainActivity extends AppCompatActivity implements MusicServiceCallb
                 // MY_PERMISSIONS_REQUEST_READ_EXTERNAL_STORAGE is an
                 // app-defined int constant that should be quite unique
 
-                return result;
+                return;
             }
         }
 
@@ -453,7 +474,7 @@ public class MainActivity extends AppCompatActivity implements MusicServiceCallb
                 track.setArtist(c.getString(artistColumn));
                 track.setDuration(c.getLong(durationColumn));
                 track.setAlbumArtURI(getAlbumArtURI(c.getInt(albumIdColumn)));
-                result.add(track);
+                tracks.add(track);
 
 //                Log.d(LOG_TAG, "Track added: " + track.toString());
 
@@ -462,14 +483,12 @@ public class MainActivity extends AppCompatActivity implements MusicServiceCallb
         }
 
         // Sort
-        Collections.sort(result, new Comparator<Track>() {
+        Collections.sort(tracks, new Comparator<Track>() {
             @Override
             public int compare(Track t1, Track t2) {
                 return t1.getTitle().compareToIgnoreCase(t2.getTitle());
             }
         });
-
-        return result;
     }
 
     private Uri getAlbumArtURI(int albumId) {
@@ -520,7 +539,7 @@ public class MainActivity extends AppCompatActivity implements MusicServiceCallb
                     // permission was granted, yay! Do the
                     // contacts-related task you need to do.
 
-                    tracks = initTrackList();
+                    initTrackList();
                     trackAdapter.notifyDataSetChanged();
 
                 } else {
