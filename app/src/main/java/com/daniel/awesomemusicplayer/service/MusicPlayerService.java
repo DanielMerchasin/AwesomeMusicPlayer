@@ -18,6 +18,7 @@ import android.widget.Toast;
 
 import com.daniel.awesomemusicplayer.App;
 import com.daniel.awesomemusicplayer.MainActivity;
+import com.daniel.awesomemusicplayer.R;
 import com.daniel.awesomemusicplayer.tracks.RepeatMode;
 import com.daniel.awesomemusicplayer.tracks.Track;
 import com.daniel.awesomemusicplayer.util.Utils;
@@ -117,11 +118,8 @@ public class MusicPlayerService extends Service implements MediaPlayer.OnErrorLi
     }
 
     public void stop() {
-        if (mediaPlayer.isPlaying()) {
+        if (mediaPlayer.isPlaying())
             mediaPlayer.stop();
-//            mediaPlayer.pause();
-//            mediaPlayer.seekTo(0);
-        }
         playerReady = false;
         if (callback != null)
             callback.onTrackStopped();
@@ -175,9 +173,6 @@ public class MusicPlayerService extends Service implements MediaPlayer.OnErrorLi
     public ArrayList<Track> getTracks() { return tracks; }
 
     public void seekTo(int position) {
-//        if (!playerReady)
-//            return;
-
         int trackTime = (int) (mediaPlayer.getDuration() / 100.0f * position);
         Log.d(LOG_TAG, "seekTo() called. position: " + position + ", track time: " + trackTime
                 + ", formatted millis: " + Utils.formatMillis(trackTime)
@@ -293,7 +288,7 @@ public class MusicPlayerService extends Service implements MediaPlayer.OnErrorLi
                 notificationIntent, PendingIntent.FLAG_UPDATE_CURRENT);
 
         Notification notification = new NotificationCompat.Builder(this, App.SERVICE_CHANNEL_ID)
-                .setSmallIcon(android.R.drawable.ic_media_play)
+                .setSmallIcon(R.drawable.amp_icon_alpha)
                 .setContentIntent(pendingIntent)
                 .setContentTitle(title)
                 .setContentText(message)

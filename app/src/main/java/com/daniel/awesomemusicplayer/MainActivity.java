@@ -1,8 +1,10 @@
 package com.daniel.awesomemusicplayer;
 
 import android.Manifest;
+import android.content.BroadcastReceiver;
 import android.content.ComponentName;
 import android.content.ContentResolver;
+import android.content.Context;
 import android.content.Intent;
 import android.content.ServiceConnection;
 import android.content.SharedPreferences;
@@ -164,32 +166,13 @@ public class MainActivity extends AppCompatActivity implements MusicServiceCallb
         shuffleEnabled = prefs.getBoolean(KEY_SHUFFLE_ON, false);
         repeatMode = RepeatMode.values()[prefs.getInt(KEY_REPEAT_MODE, 0)];
 
-        // If the tracks haven't been passed in savedInstanceState, load them
+        // Load the tracks
         initTrackList();
-
-        // If the trackIndex pulled from prefs is larger than the list size,
-        // meaning the list has been changed - reset the index
-        if (trackIndex >= tracks.size())
-            trackIndex = 0;
-
-        // Prepare the UI
-        Track track = tracks.get(trackIndex);
-        int sliderProgress = (int) ((trackTime * 1000.0f) / track.getDuration() * 100.0f);
-        skbrSlider.setProgress(sliderProgress);
-        track.setSelected(true);
-        lblTrackName.setText(track.getFullTitle());
-        trackAdapter = new TrackAdapter(this, tracks);
-        lstTracks.setAdapter(trackAdapter);
-        lblPosition.setText(Utils.formatSeconds(trackTime));
-        updateAlbumImage(track);
 
         lstTracks.setOnItemClickListener(new AdapterView.OnItemClickListener() {
             @Override
             public void onItemClick(AdapterView<?> adapterView, View view, int position, long l) {
-                if (!serviceBound)
-                    return;
-
-                if (position == trackIndex)
+                if (!serviceBound || position == trackIndex)
                     return;
 
                 // Select song on the service
@@ -334,43 +317,44 @@ public class MainActivity extends AppCompatActivity implements MusicServiceCallb
             // Pull data from service
             timerRunning = musicPlayerService.isPlaying();
             trackTime = timerRunning ? musicPlayerService.getPosition() : 0;
-
-            // Update the listview
-            performTrackListSelection(true);
-
-            // Update UI components
-            Track track = tracks.get(trackIndex);
-            int sliderProgress = (int) (trackTime / (track.getDuration() / 1000.0f) * 100.0f);
-            skbrSlider.setProgress(sliderProgress);
-            lblTrackName.setText(track.getFullTitle());
-            lblDuration.setText(Utils.formatMillis(track.getDuration()));
-            lblPosition.setText(Utils.formatSeconds(trackTime));
-            btnPlay.setImageDrawable(getDrawable(musicPlayerService.isPlaying()
-                    ? R.drawable.btn_pause
-                    : R.drawable.btn_play));
-
-            // Update the RepeatMode and shuffle buttons
             shuffleEnabled = musicPlayerService.isShuffled();
             repeatMode = musicPlayerService.getRepeatMode();
 
-            switch (repeatMode) {
-                case NONE:
-                    btnRepeat.setImageDrawable(getDrawable(R.drawable.btn_repeat_off));
-                    break;
-                case REPEAT_TRACK:
-                    btnRepeat.setImageDrawable(getDrawable(R.drawable.btn_repeat_track));
-                    break;
-                case REPEAT_ALL:
-                    btnRepeat.setImageDrawable(getDrawable(R.drawable.btn_repeat_all));
-                    break;
+            if (tracks.size() > 0) {
+                // Update the listview
+                performTrackListSelection(true);
+
+                // Update UI components
+                Track track = tracks.get(trackIndex);
+                int sliderProgress = (int) (trackTime / (track.getDuration() / 1000.0f) * 100.0f);
+                skbrSlider.setProgress(sliderProgress);
+                lblTrackName.setText(track.getFullTitle());
+                lblDuration.setText(Utils.formatMillis(track.getDuration()));
+                lblPosition.setText(Utils.formatSeconds(trackTime));
+                btnPlay.setImageDrawable(getDrawable(musicPlayerService.isPlaying()
+                        ? R.drawable.btn_pause
+                        : R.drawable.btn_play));
+
+                // Update the RepeatMode and shuffle buttons
+                switch (repeatMode) {
+                    case NONE:
+                        btnRepeat.setImageDrawable(getDrawable(R.drawable.btn_repeat_off));
+                        break;
+                    case REPEAT_TRACK:
+                        btnRepeat.setImageDrawable(getDrawable(R.drawable.btn_repeat_track));
+                        break;
+                    case REPEAT_ALL:
+                        btnRepeat.setImageDrawable(getDrawable(R.drawable.btn_repeat_all));
+                        break;
+                }
+
+                btnShuffle.setImageDrawable(getDrawable(shuffleEnabled
+                        ? R.drawable.btn_shuffle_on
+                        : R.drawable.btn_shuffle_off));
+
+                // Load album art image
+                updateAlbumImage(track);
             }
-
-            btnShuffle.setImageDrawable(getDrawable(shuffleEnabled
-                    ? R.drawable.btn_shuffle_on
-                    : R.drawable.btn_shuffle_off));
-
-            // Load album art image
-            updateAlbumImage(track);
 
         }
 
@@ -381,8 +365,8 @@ public class MainActivity extends AppCompatActivity implements MusicServiceCallb
         public void onServiceConnected(ComponentName name, IBinder service) {
             MusicPlayerService.MusicServiceBinder binder = (MusicPlayerService.MusicServiceBinder) service;
             musicPlayerService = binder.getService();
-            musicPlayerService.setTracks(tracks);
             musicPlayerService.setCallback(MainActivity.this);
+            musicPlayerService.setTracks(tracks);
 
             // If the player is stopped, pass it the initial values
             if (!musicPlayerService.isReady()) {
@@ -415,7 +399,9 @@ public class MainActivity extends AppCompatActivity implements MusicServiceCallb
     }
 
     private void initTrackList() {
-        tracks = new ArrayList<>();
+
+        if (tracks == null)
+            tracks = new ArrayList<>();
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
             if (checkSelfPermission(Manifest.permission.READ_EXTERNAL_STORAGE)
@@ -459,6 +445,24 @@ public class MainActivity extends AppCompatActivity implements MusicServiceCallb
                 return t1.getTitle().compareToIgnoreCase(t2.getTitle());
             }
         });
+
+        // If the trackIndex pulled from prefs is larger than the list size,
+        // meaning the list has been changed - reset the index
+        if (trackIndex >= tracks.size())
+            trackIndex = 0;
+
+        Log.d(LOG_TAG, "Initializing UI...");
+
+        // Prepare the UI
+        Track track = tracks.get(trackIndex);
+        int sliderProgress = (int) ((trackTime * 1000.0f) / track.getDuration() * 100.0f);
+        skbrSlider.setProgress(sliderProgress);
+        track.setSelected(true);
+        lblTrackName.setText(track.getFullTitle());
+        trackAdapter = new TrackAdapter(this, tracks);
+        lstTracks.setAdapter(trackAdapter);
+        lblPosition.setText(Utils.formatSeconds(trackTime));
+        updateAlbumImage(track);
     }
 
     private String getAlbumArtURI(int albumId) {
@@ -501,11 +505,11 @@ public class MainActivity extends AppCompatActivity implements MusicServiceCallb
         if (track.getAlbumArtURI() != null) {
             Glide.with(this)
                     .load(track.getAlbumArtURI())
-                    .placeholder(R.drawable.album_placeholder)
-                    .error(R.drawable.album_placeholder)
+                    .placeholder(R.drawable.amp_icon)
+                    .error(R.drawable.amp_icon)
                     .into(imgAlbum);
         } else {
-            imgAlbum.setImageDrawable(getDrawable(R.drawable.album_placeholder));
+            imgAlbum.setImageDrawable(getDrawable(R.drawable.amp_icon));
         }
     }
 
@@ -514,10 +518,11 @@ public class MainActivity extends AppCompatActivity implements MusicServiceCallb
         if (requestCode == PERMISSIONS_REQUEST_READ_EXTERNAL_STORAGE) {
             if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
                 // Permission granted - load the tracks
+                Log.d(LOG_TAG, "Permission granted.");
                 initTrackList();
-                trackAdapter.notifyDataSetChanged();
             } else {
                 // Permission denied, notify user and close the app
+                Log.d(LOG_TAG, "Permission denied.");
                 Toast.makeText(this, "Unable to start the app without permissions to access the device storage, please grant them!",
                         Toast.LENGTH_LONG).show();
                 finish();
@@ -565,7 +570,7 @@ public class MainActivity extends AppCompatActivity implements MusicServiceCallb
 
     @Override
     public void onTrackStarted(int trackIndex) {
-        performTrackListSelection(false);
+        performTrackListSelection(shuffleEnabled);
         timerRunning = true;
         trackTime = 0;
         Track track = tracks.get(trackIndex);
