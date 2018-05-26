@@ -16,6 +16,8 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.os.IBinder;
 import android.provider.MediaStore;
+import android.support.annotation.DrawableRes;
+import android.support.annotation.IdRes;
 import android.support.annotation.NonNull;
 import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
@@ -46,13 +48,13 @@ import java.util.Comparator;
  *
  * Interaction between the activity and the service:
  *
- * 1. onCreate:
- *      The track list is loaded.
- *
- * 2. onStart:
- *      The service is initialized.
- *      The track list and a callback interface are passed to the service.
+ * 1. onStart:
+ *      The service is initialized and bound.
  *      TrackTimerThread is initialized and launched.
+
+ * 2. onServiceConnected:
+ *      The necessary data is passed to the service.
+ *      If the track list is already loaded on the service, use it in the activity
  *
  * 3. onResume:
  *      The UI is updating using data from the service.
@@ -66,7 +68,7 @@ import java.util.Comparator;
 public class MainActivity extends AppCompatActivity implements MusicServiceCallback {
 
     /** Log tag */
-    private static final String LOG_TAG = "MainActivity";
+    private static final String LOG_TAG         = "MainActivity";
 
     /** SharedPreferences Key*/
     public static final String PREFS_KEY        = "com.daniel.awesomemusicplayer";
@@ -74,8 +76,6 @@ public class MainActivity extends AppCompatActivity implements MusicServiceCallb
     /** Key constants for instance state and shared preferences */
     private static final String KEY_TRACK_INDEX = "KEY_TRACK_INDEX";
     private static final String KEY_TRACK_TIME  = "KEY_TRACK_TIME";
-    private static final String KEY_PLAYING     = "KEY_PLAYING";
-    private static final String KEY_TRACK_LIST  = "KEY_TRACK_LIST";
     private static final String KEY_SHUFFLE_ON  = "KEY_SHUFFLE_ON";
     private static final String KEY_REPEAT_MODE = "KEY_REPEAT_MODE";
 
@@ -98,31 +98,31 @@ public class MainActivity extends AppCompatActivity implements MusicServiceCallb
     private Intent serviceIntent;
 
     /** Is the service bound to the activity? */
-    private boolean serviceBound = false;
+    private boolean serviceBound;
 
     /**
      * Is the service running?
      * A flag used to decide whether to stop the service in onStop
      */
-    private boolean serviceRunning = false;
+    private boolean serviceRunning;
 
     /** Is shuffle mode enabled on the service? */
-    private boolean shuffleEnabled = false;
+    private boolean shuffleEnabled;
 
     /** The repeat mode on the service */
-    private RepeatMode repeatMode = RepeatMode.NONE;
+    private RepeatMode repeatMode;
 
     /** UI components */
     private ListView lstTracks;
-    private ImageView imgAlbum, btnPrevious, btnPlay, btnNext, btnStop, btnShuffle, btnRepeat;
+    private ImageView imgAlbum, btnPrevious, btnPlay,
+            btnNext, btnStop, btnShuffle, btnRepeat;
     private TextView lblPosition, lblDuration, lblTrackName;
     private SeekBar skbrSlider;
 
-    /** SharedPreferences */
+    /** Shared Preferences */
     private SharedPreferences prefs;
 
-    // --- Media Player Service state data
-    /** Track position (index) */
+    /** Index of the selected track */
     private int trackIndex;
 
     /**
@@ -139,6 +139,8 @@ public class MainActivity extends AppCompatActivity implements MusicServiceCallb
 
     /** Handler used to update the UI from the TrackTimerThread */
     private final Handler handler = new Handler();
+
+    // --- Activity lifecycle methods
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -166,8 +168,7 @@ public class MainActivity extends AppCompatActivity implements MusicServiceCallb
         shuffleEnabled = prefs.getBoolean(KEY_SHUFFLE_ON, false);
         repeatMode = RepeatMode.values()[prefs.getInt(KEY_REPEAT_MODE, 0)];
 
-        // Load the tracks
-        initTrackList();
+        // -- Prepare listeners
 
         lstTracks.setOnItemClickListener(new AdapterView.OnItemClickListener() {
             @Override
@@ -187,9 +188,8 @@ public class MainActivity extends AppCompatActivity implements MusicServiceCallb
         btnPlay.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                if (!serviceBound)
-                    return;
-
+                // Play button clicked, toggle play/pause on the service
+                if (!serviceBound) return;
                 musicPlayerService.togglePlayPause();
                 serviceRunning = true;
             }
@@ -198,9 +198,7 @@ public class MainActivity extends AppCompatActivity implements MusicServiceCallb
         btnStop.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                if (!serviceBound)
-                    return;
-
+                if (!serviceBound) return;
                 musicPlayerService.stop();
                 serviceRunning = false;
             }
@@ -209,9 +207,7 @@ public class MainActivity extends AppCompatActivity implements MusicServiceCallb
         btnNext.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                if (!serviceBound)
-                    return;
-
+                if (!serviceBound) return;
                 musicPlayerService.playNext();
                 performTrackListSelection(true);
             }
@@ -220,21 +216,17 @@ public class MainActivity extends AppCompatActivity implements MusicServiceCallb
         btnPrevious.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                if (!serviceBound)
-                    return;
-
+                if (!serviceBound) return;
                 musicPlayerService.playPrevious();
                 performTrackListSelection(true);
-
             }
         });
 
         skbrSlider.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
             @Override
             public void onProgressChanged(SeekBar seekBar, int position, boolean fromUser) {
-                if (!fromUser || !serviceBound)
-                    return;
-
+                // If the user changes the progress, call seekTo() on the service
+                if (!fromUser || !serviceBound) return;
                 musicPlayerService.seekTo(position);
             }
 
@@ -304,6 +296,12 @@ public class MainActivity extends AppCompatActivity implements MusicServiceCallb
                     .apply();
 
             stopService(serviceIntent);
+        } else {
+            // If the service is still running, the track might be paused
+            // Save the position of the track
+            prefs.edit()
+                    .putInt(KEY_TRACK_TIME, trackTime)
+                    .apply();
         }
 
         // Stop the track timer thread to prevent unnecessary memory consumption
@@ -316,7 +314,9 @@ public class MainActivity extends AppCompatActivity implements MusicServiceCallb
         if (serviceBound) {
             // Pull data from service
             timerRunning = musicPlayerService.isPlaying();
-            trackTime = timerRunning ? musicPlayerService.getPosition() : 0;
+            trackTime = timerRunning
+                    ? musicPlayerService.getPosition()
+                    : prefs.getInt(KEY_TRACK_TIME, 0);
             shuffleEnabled = musicPlayerService.isShuffled();
             repeatMode = musicPlayerService.getRepeatMode();
 
@@ -326,6 +326,7 @@ public class MainActivity extends AppCompatActivity implements MusicServiceCallb
 
                 // Update UI components
                 Track track = tracks.get(trackIndex);
+                Log.d(LOG_TAG, "Selected track on UI update: " + track);
                 int sliderProgress = (int) (trackTime / (track.getDuration() / 1000.0f) * 100.0f);
                 skbrSlider.setProgress(sliderProgress);
                 lblTrackName.setText(track.getFullTitle());
@@ -355,18 +356,29 @@ public class MainActivity extends AppCompatActivity implements MusicServiceCallb
                 // Load album art image
                 updateAlbumImage(track);
             }
-
         }
-
     }
 
+    /**
+     * Service connection
+     */
     private ServiceConnection musicServiceConnection = new ServiceConnection() {
         @Override
         public void onServiceConnected(ComponentName name, IBinder service) {
+            serviceBound = true;
             MusicPlayerService.MusicServiceBinder binder = (MusicPlayerService.MusicServiceBinder) service;
             musicPlayerService = binder.getService();
             musicPlayerService.setCallback(MainActivity.this);
-            musicPlayerService.setTracks(tracks);
+
+            // If the tracks have already been initialized on the service, grab a reference
+            // to use in the Main Activity. If not, pass the loaded tracks to the service.
+            if (musicPlayerService.getTracks() != null) {
+                tracks = musicPlayerService.getTracks();
+                trackAdapter = new TrackAdapter(MainActivity.this, tracks);
+                lstTracks.setAdapter(trackAdapter);
+            } else {
+                initTrackList();
+            }
 
             // If the player is stopped, pass it the initial values
             if (!musicPlayerService.isReady()) {
@@ -374,8 +386,6 @@ public class MainActivity extends AppCompatActivity implements MusicServiceCallb
                 musicPlayerService.setShuffle(shuffleEnabled);
                 musicPlayerService.setRepeatMode(repeatMode);
             }
-
-            serviceBound = true;
 
             updateUI();
             Log.d(LOG_TAG, "Service bound.");
@@ -445,6 +455,11 @@ public class MainActivity extends AppCompatActivity implements MusicServiceCallb
                 return t1.getTitle().compareToIgnoreCase(t2.getTitle());
             }
         });
+
+        // Pass the track list to the service
+        if (serviceBound) {
+            musicPlayerService.setTracks(tracks);
+        }
 
         // If the trackIndex pulled from prefs is larger than the list size,
         // meaning the list has been changed - reset the index
@@ -614,17 +629,25 @@ public class MainActivity extends AppCompatActivity implements MusicServiceCallb
 
         this.repeatMode = repeatMode;
 
+        String mode = null;
+        int drawableId = 0;
         switch (repeatMode) {
             case NONE:
-                btnRepeat.setImageDrawable(getDrawable(R.drawable.btn_repeat_off));
+                mode = "Repeat OFF";
+                drawableId = R.drawable.btn_repeat_off;
                 break;
             case REPEAT_TRACK:
-                btnRepeat.setImageDrawable(getDrawable(R.drawable.btn_repeat_track));
+                mode = "Repeat ON - Track";
+                drawableId = R.drawable.btn_repeat_track;
                 break;
             case REPEAT_ALL:
-                btnRepeat.setImageDrawable(getDrawable(R.drawable.btn_repeat_all));
+                mode = "Repeat ON - All";
+                drawableId = R.drawable.btn_repeat_all;
                 break;
         }
+        btnRepeat.setImageDrawable(getDrawable(drawableId));
+        Toast.makeText(this, mode, Toast.LENGTH_SHORT).show();
+
     }
 
     @Override
@@ -636,6 +659,8 @@ public class MainActivity extends AppCompatActivity implements MusicServiceCallb
         btnShuffle.setImageDrawable(getDrawable(shuffleEnabled
                 ? R.drawable.btn_shuffle_on
                 : R.drawable.btn_shuffle_off));
+
+        Toast.makeText(this, "Shuffle " + (shuffleEnabled ? "ON" : "OFF"), Toast.LENGTH_SHORT).show();
     }
 
     @Override

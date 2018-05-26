@@ -78,6 +78,7 @@ public class TrackAdapter extends ArrayAdapter<Track> {
                             .into(viewHolder.imgEqualizer);
                 }
             } else {
+                viewHolder.imgEqualizer.setImageDrawable(null);
                 viewHolder.imgEqualizer.setVisibility(View.GONE);
             }
 

@@ -30,9 +30,11 @@ import java.util.Stack;
 public class MusicPlayerService extends Service implements MediaPlayer.OnErrorListener,
         MediaPlayer.OnCompletionListener, MediaPlayer.OnPreparedListener {
 
-    private static final String LOG_TAG = "MusicPlayerService";
+    /** Log tag */
+    private static final String LOG_TAG         = "MusicPlayerService";
 
-    private static final int NOTIFICATION_ID = 1234;
+    /**  */
+    private static final int NOTIFICATION_ID    = 1234;
 
     private MediaPlayer mediaPlayer;
     private ArrayList<Track> tracks;

@@ -8,14 +8,4 @@
     <color name="colorTrackListBackgroundTwo">#232323</color>
     <color name="colorTrackListDivider">#AFAFAF</color>
     <color name="colorTrackListText">#DCDCDC</color>
-
-    <!--<color name="colorPrimary">#636363</color>-->
-    <!--<color name="colorPrimaryDark">#69010d</color>-->
-    <!--<color name="colorAccent">#9B1D20</color>-->
-
-    <!--<color name="colorTrackListBackgroundOne">#4B4B4B</color>-->
-    <!--<color name="colorTrackListBackgroundTwo">#232323</color>-->
-    <!--<color name="colorTrackListDivider">#AFAFAF</color>-->
-    <!--<color name="colorTrackListText">#DCDCDC</color>-->
-
 </resources>

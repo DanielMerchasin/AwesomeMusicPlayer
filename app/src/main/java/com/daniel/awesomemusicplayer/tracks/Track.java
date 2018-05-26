@@ -1,7 +1,5 @@
 package com.daniel.awesomemusicplayer.tracks;
 
-import android.net.Uri;
-
 import com.daniel.awesomemusicplayer.util.Utils;
 
 import java.io.Serializable;
@@ -94,7 +92,8 @@ public class Track implements Serializable {
 
     @Override
     public String toString() {
-        return "[" + id + "] " + title + " by " + artist + " (" + Utils.formatMillis(duration) + ")";
+        return "[" + id + "] " + title + " by " + artist + " (" + Utils.formatMillis(duration) + ")"
+                + (selected ? " SELECTED" : "") + (playing ? " PLAYING" : "");
     }
 
 }
