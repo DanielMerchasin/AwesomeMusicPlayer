@@ -140,6 +140,7 @@ public class MusicPlayerService extends Service implements MediaPlayer.OnErrorLi
             } while (trackIndex == newPosition);
             trackIndex = newPosition;
         } else {
+            shuffleStack.clear();
             trackIndex++;
             if (trackIndex >= tracks.size()) {
                 if (repeatMode == RepeatMode.REPEAT_ALL) {
@@ -169,7 +170,14 @@ public class MusicPlayerService extends Service implements MediaPlayer.OnErrorLi
         return mediaPlayer.isPlaying();
     }
 
+    public boolean isReady() { return playerReady; }
+
+    public ArrayList<Track> getTracks() { return tracks; }
+
     public void seekTo(int position) {
+//        if (!playerReady)
+//            return;
+
         int trackTime = (int) (mediaPlayer.getDuration() / 100.0f * position);
         Log.d(LOG_TAG, "seekTo() called. position: " + position + ", track time: " + trackTime
                 + ", formatted millis: " + Utils.formatMillis(trackTime)

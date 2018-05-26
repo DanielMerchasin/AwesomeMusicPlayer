@@ -25,6 +25,7 @@ import android.widget.SeekBar;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import com.bumptech.glide.Glide;
 import com.daniel.awesomemusicplayer.service.MusicPlayerService;
 import com.daniel.awesomemusicplayer.service.MusicServiceCallback;
 import com.daniel.awesomemusicplayer.tracks.RepeatMode;
@@ -177,10 +178,10 @@ public class MainActivity extends AppCompatActivity implements MusicServiceCallb
         skbrSlider.setProgress(sliderProgress);
         track.setSelected(true);
         lblTrackName.setText(track.getFullTitle());
-        lblTrackName.setText("YOOOOOOOOOOOOOOOOOOOOOOOOOOOOO");
         trackAdapter = new TrackAdapter(this, tracks);
         lstTracks.setAdapter(trackAdapter);
         lblPosition.setText(Utils.formatSeconds(trackTime));
+        updateAlbumImage(track);
 
         lstTracks.setOnItemClickListener(new AdapterView.OnItemClickListener() {
             @Override
@@ -368,6 +369,9 @@ public class MainActivity extends AppCompatActivity implements MusicServiceCallb
                     ? R.drawable.btn_shuffle_on
                     : R.drawable.btn_shuffle_off));
 
+            // Load album art image
+            updateAlbumImage(track);
+
         }
 
     }
@@ -380,16 +384,12 @@ public class MainActivity extends AppCompatActivity implements MusicServiceCallb
             musicPlayerService.setTracks(tracks);
             musicPlayerService.setCallback(MainActivity.this);
 
-            // If these parameter don't have their default values,
-            // meaning they have been pulled from prefs, pass them to the service
-            if (trackIndex != 0)
+            // If the player is stopped, pass it the initial values
+            if (!musicPlayerService.isReady()) {
                 musicPlayerService.setTrackIndex(trackIndex);
-
-            if (shuffleEnabled)
-                musicPlayerService.setShuffle(true);
-
-            if (repeatMode != RepeatMode.NONE)
+                musicPlayerService.setShuffle(shuffleEnabled);
                 musicPlayerService.setRepeatMode(repeatMode);
+            }
 
             serviceBound = true;
 
@@ -484,8 +484,8 @@ public class MainActivity extends AppCompatActivity implements MusicServiceCallb
         });
     }
 
-    private Uri getAlbumArtURI(int albumId) {
-        Uri result = null;
+    private String getAlbumArtURI(int albumId) {
+        String result = null;
 
         Cursor cursor = getContentResolver().query(
                 MediaStore.Audio.Albums.EXTERNAL_CONTENT_URI,
@@ -497,11 +497,8 @@ public class MainActivity extends AppCompatActivity implements MusicServiceCallb
 
         if (cursor != null) {
             if (cursor.moveToFirst()) {
-                String path = cursor.getString(
+                result = cursor.getString(
                         cursor.getColumnIndex(MediaStore.Audio.Albums.ALBUM_ART));
-                if (path != null) {
-                    result = Uri.parse(path);
-                }
             }
             cursor.close();
         }
@@ -520,6 +517,19 @@ public class MainActivity extends AppCompatActivity implements MusicServiceCallb
         if (moveToItem)
             lstTracks.setSelection(Math.max(0, trackIndex - 3));
         Log.d(LOG_TAG, "Performing selection: " + trackIndex);
+    }
+
+    private void updateAlbumImage(Track track) {
+        Log.d(LOG_TAG, "Track Album URI: " + track.getAlbumArtURI());
+        if (track.getAlbumArtURI() != null) {
+            Glide.with(this)
+                    .load(track.getAlbumArtURI())
+                    .placeholder(R.drawable.album_placeholder)
+                    .error(R.drawable.album_placeholder)
+                    .into(imgAlbum);
+        } else {
+            imgAlbum.setImageDrawable(getDrawable(R.drawable.album_placeholder));
+        }
     }
 
     @Override
@@ -595,6 +605,9 @@ public class MainActivity extends AppCompatActivity implements MusicServiceCallb
         lblDuration.setText(Utils.formatMillis(track.getDuration()));
         lblTrackName.setText(track.getFullTitle());
         btnPlay.setImageDrawable(getDrawable(R.drawable.btn_pause));
+
+        // Load album image
+        updateAlbumImage(track);
     }
 
     @Override

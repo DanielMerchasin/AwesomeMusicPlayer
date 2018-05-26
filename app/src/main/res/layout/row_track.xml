@@ -14,7 +14,9 @@
         android:text="The Baying of the Hounds"
         android:textStyle="bold"
         android:textColor="@color/colorTrackListText"
-        android:textAppearance="@style/Base.TextAppearance.AppCompat.Medium"/>
+        android:textAppearance="@style/Base.TextAppearance.AppCompat.Medium"
+        android:ellipsize="end"
+        android:maxLines="1"/>
 
     <LinearLayout
         android:layout_width="match_parent"
@@ -27,7 +29,9 @@
             android:layout_height="wrap_content"
             android:layout_weight="1"
             android:textColor="@color/colorTrackListText"
-            android:text="Ghost Reveries"/>
+            android:text="Ghost Reveries"
+            android:ellipsize="end"
+            android:maxLines="1"/>
 
         <TextView
             android:id="@+id/lblDuration"

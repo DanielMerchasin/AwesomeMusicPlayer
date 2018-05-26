@@ -15,7 +15,7 @@ public class Track implements Serializable {
     private String artist;
     private long duration;
     private boolean selected;
-    private Uri albumArtURI;
+    private String albumArtURI;
 
     public Track() {}
 
@@ -59,11 +59,11 @@ public class Track implements Serializable {
         this.selected = selected;
     }
 
-    public Uri getAlbumArtURI() {
+    public String getAlbumArtURI() {
         return albumArtURI;
     }
 
-    public void setAlbumArtURI(Uri albumArtURI) {
+    public void setAlbumArtURI(String albumArtURI) {
         this.albumArtURI = albumArtURI;
     }
 
