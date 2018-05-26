@@ -7,9 +7,12 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ArrayAdapter;
+import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 
+import com.bumptech.glide.Glide;
+import com.bumptech.glide.load.engine.DiskCacheStrategy;
 import com.daniel.awesomemusicplayer.R;
 import com.daniel.awesomemusicplayer.util.Utils;
 
@@ -36,6 +39,7 @@ public class TrackAdapter extends ArrayAdapter<Track> {
             viewHolder.lblTitle = convertView.findViewById(R.id.lblTitle);
             viewHolder.lblArtist = convertView.findViewById(R.id.lblArtist);
             viewHolder.lblDuration = convertView.findViewById(R.id.lblDuration);
+            viewHolder.imgEqualizer = convertView.findViewById(R.id.imgEqualizer);
 
             convertView.setTag(viewHolder);
 
@@ -47,7 +51,7 @@ public class TrackAdapter extends ArrayAdapter<Track> {
 
         if (track != null) {
 
-            viewHolder.background.setBackgroundColor(getContext().getResources().getColor(
+            viewHolder.background.setBackgroundColor(getContext().getColor(
                     track.isSelected()
                             ? R.color.colorAccent
                             : position % 2 == 0
@@ -58,6 +62,25 @@ public class TrackAdapter extends ArrayAdapter<Track> {
             viewHolder.lblArtist.setText(track.getArtist());
             viewHolder.lblDuration.setText(Utils.formatMillis(track.getDuration()));
 
+            if (track.isSelected()) {
+                viewHolder.imgEqualizer.setVisibility(View.VISIBLE);
+                if (track.isPlaying()) {
+                    Glide.with(getContext())
+                            .load(R.drawable.equalizer)
+                            .asGif()
+                            .diskCacheStrategy(DiskCacheStrategy.SOURCE)
+                            .into(viewHolder.imgEqualizer);
+                } else {
+                    Glide.with(getContext())
+                            .load(R.drawable.equalizer)
+                            .asBitmap()
+                            .diskCacheStrategy(DiskCacheStrategy.SOURCE)
+                            .into(viewHolder.imgEqualizer);
+                }
+            } else {
+                viewHolder.imgEqualizer.setVisibility(View.GONE);
+            }
+
         }
 
         return convertView;
@@ -66,6 +89,7 @@ public class TrackAdapter extends ArrayAdapter<Track> {
     private static final class ViewHolder {
         LinearLayout background;
         TextView lblTitle, lblArtist, lblDuration;
+        ImageView imgEqualizer;
     }
 
 }

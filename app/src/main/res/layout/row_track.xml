@@ -7,17 +7,33 @@
     android:layout_height="match_parent"
     android:padding="10dp">
 
-    <TextView
-        android:id="@+id/lblTitle"
-        android:layout_width="wrap_content"
+    <LinearLayout
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="The Baying of the Hounds"
-        android:textStyle="bold"
-        android:textColor="@color/colorTrackListText"
-        android:textAppearance="@style/Base.TextAppearance.AppCompat.Medium"
-        android:ellipsize="end"
-        android:maxLines="1"/>
+        android:orientation="horizontal"
+        android:gravity="center_vertical">
 
+        <TextView
+            android:id="@+id/lblTitle"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="The Baying of the Hounds"
+            android:textStyle="bold"
+            android:textColor="@color/colorTrackListText"
+            android:textAppearance="@style/Base.TextAppearance.AppCompat.Medium"
+            android:ellipsize="end"
+            android:maxLines="1"
+            android:layout_weight="1"/>
+        
+        <ImageView
+            android:id="@+id/imgEqualizer"
+            android:layout_width="40dp"
+            android:layout_height="20dp"
+            android:src="@drawable/equalizer"
+            android:visibility="gone"/>
+
+    </LinearLayout>
+    
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"

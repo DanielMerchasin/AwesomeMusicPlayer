@@ -15,6 +15,7 @@ public class Track implements Serializable {
     private String artist;
     private long duration;
     private boolean selected;
+    private boolean playing;
     private String albumArtURI;
 
     public Track() {}
@@ -69,6 +70,14 @@ public class Track implements Serializable {
 
     public String getFullTitle() {
         return artist + " - " + title;
+    }
+
+    public boolean isPlaying() {
+        return playing;
+    }
+
+    public void setPlaying(boolean playing) {
+        this.playing = playing;
     }
 
     @Override

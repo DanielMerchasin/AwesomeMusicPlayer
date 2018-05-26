@@ -43,7 +43,7 @@
                 android:id="@+id/imgAlbum"
                 android:layout_width="70dp"
                 android:layout_height="70dp"
-                android:src="@drawable/album_placeholder"/>
+                android:src="@drawable/amp_icon"/>
 
             <LinearLayout
                 android:layout_width="match_parent"

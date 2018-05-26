@@ -570,6 +570,7 @@ public class MainActivity extends AppCompatActivity implements MusicServiceCallb
 
     @Override
     public void onTrackStarted(int trackIndex) {
+        trackAdapter.notifyDataSetChanged();
         performTrackListSelection(shuffleEnabled);
         timerRunning = true;
         trackTime = 0;
@@ -585,18 +586,21 @@ public class MainActivity extends AppCompatActivity implements MusicServiceCallb
 
     @Override
     public void onTrackPaused() {
+        trackAdapter.notifyDataSetChanged();
         btnPlay.setImageDrawable(getDrawable(R.drawable.btn_play));
         timerRunning = false;
     }
 
     @Override
     public void onTrackResumed() {
+        trackAdapter.notifyDataSetChanged();
         btnPlay.setImageDrawable(getDrawable(R.drawable.btn_pause));
         timerRunning = true;
     }
 
     @Override
     public void onTrackStopped() {
+        trackAdapter.notifyDataSetChanged();
         btnPlay.setImageDrawable(getDrawable(R.drawable.btn_play));
         lblPosition.setText(Utils.formatMillis(0));
         skbrSlider.setProgress(0);

@@ -81,6 +81,7 @@ public class MusicPlayerService extends Service implements MediaPlayer.OnErrorLi
 
         Track track = tracks.get(trackIndex);
         trackTitle = track.getArtist() + " - " + track.getTitle();
+        track.setPlaying(true);
 
         Uri trackUri = ContentUris.withAppendedId(
                 MediaStore.Audio.Media.EXTERNAL_CONTENT_URI, track.getId());
@@ -104,6 +105,9 @@ public class MusicPlayerService extends Service implements MediaPlayer.OnErrorLi
             playTrack();
         } else {
             mediaPlayer.start();
+
+            tracks.get(trackIndex).setPlaying(true);
+
             if (callback != null)
                 callback.onTrackResumed();
             notifyAndStartForeground("Now Playing...", trackTitle);
@@ -112,12 +116,14 @@ public class MusicPlayerService extends Service implements MediaPlayer.OnErrorLi
 
     public void pause() {
         mediaPlayer.pause();
+        tracks.get(trackIndex).setPlaying(false);
         if (callback != null)
             callback.onTrackPaused();
         notifyAndStartForeground("Paused", trackTitle);
     }
 
     public void stop() {
+        tracks.get(trackIndex).setPlaying(false);
         if (mediaPlayer.isPlaying())
             mediaPlayer.stop();
         playerReady = false;
@@ -127,6 +133,8 @@ public class MusicPlayerService extends Service implements MediaPlayer.OnErrorLi
     }
 
     public void playNext() {
+        tracks.get(trackIndex).setPlaying(false);
+
         if (shuffle) {
             // Save last song in stack
             shuffleStack.push(trackIndex);
@@ -154,6 +162,7 @@ public class MusicPlayerService extends Service implements MediaPlayer.OnErrorLi
     }
 
     public void playPrevious() {
+        tracks.get(trackIndex).setPlaying(false);
         if (shuffle && !shuffleStack.isEmpty()) {
             trackIndex = shuffleStack.pop();
         } else {
@@ -173,13 +182,15 @@ public class MusicPlayerService extends Service implements MediaPlayer.OnErrorLi
     public ArrayList<Track> getTracks() { return tracks; }
 
     public void seekTo(int position) {
-        int trackTime = (int) (mediaPlayer.getDuration() / 100.0f * position);
-        Log.d(LOG_TAG, "seekTo() called. position: " + position + ", track time: " + trackTime
-                + ", formatted millis: " + Utils.formatMillis(trackTime)
-                + ", formatted seconds: " + Utils.formatSeconds(trackTime));
-        mediaPlayer.seekTo(trackTime);
-        if (callback != null)
-            callback.onPositionChanged(position, trackTime / 1000);
+        if (playerReady) {
+            int trackTime = (int) (mediaPlayer.getDuration() / 100.0f * position);
+            Log.d(LOG_TAG, "seekTo() called. position: " + position + ", track time: " + trackTime
+                    + ", formatted millis: " + Utils.formatMillis(trackTime)
+                    + ", formatted seconds: " + Utils.formatSeconds(trackTime));
+            mediaPlayer.seekTo(trackTime);
+            if (callback != null)
+                callback.onPositionChanged(position, trackTime / 1000);
+        }
     }
 
     public int getPosition() {
