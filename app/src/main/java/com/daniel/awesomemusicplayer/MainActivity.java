@@ -418,30 +418,10 @@ public class MainActivity extends AppCompatActivity implements MusicServiceCallb
         tracks = new ArrayList<>();
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-
-            Log.d(LOG_TAG, "Version code is greater than M.");
-
             if (checkSelfPermission(Manifest.permission.READ_EXTERNAL_STORAGE)
                     != PackageManager.PERMISSION_GRANTED) {
-
-                Log.d(LOG_TAG, "Permission denied.");
-
-                // Should we show an explanation?
-                if (shouldShowRequestPermissionRationale(
-                        Manifest.permission.READ_EXTERNAL_STORAGE)) {
-                    // Explain to the user why we need to read the contacts
-                    Toast.makeText(this, "YO!!!!! GRANT THESE PERMISSIONS MOTHERFUCKER!",
-                            Toast.LENGTH_LONG).show();
-                }
-
-                Log.d(LOG_TAG, "Requesting permissions.");
-
                 requestPermissions(new String[]{Manifest.permission.READ_EXTERNAL_STORAGE},
                         PERMISSIONS_REQUEST_READ_EXTERNAL_STORAGE);
-
-                // MY_PERMISSIONS_REQUEST_READ_EXTERNAL_STORAGE is an
-                // app-defined int constant that should be quite unique
-
                 return;
             }
         }
@@ -468,9 +448,6 @@ public class MainActivity extends AppCompatActivity implements MusicServiceCallb
                 track.setDuration(c.getLong(durationColumn));
                 track.setAlbumArtURI(getAlbumArtURI(c.getInt(albumIdColumn)));
                 tracks.add(track);
-
-//                Log.d(LOG_TAG, "Track added: " + track.toString());
-
             } while (c.moveToNext());
             c.close();
         }
@@ -534,26 +511,17 @@ public class MainActivity extends AppCompatActivity implements MusicServiceCallb
 
     @Override
     public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
-        switch (requestCode) {
-            case PERMISSIONS_REQUEST_READ_EXTERNAL_STORAGE:
-                // If request is cancelled, the result arrays are empty.
-                if (grantResults.length > 0
-                        && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                    // permission was granted, yay! Do the
-                    // contacts-related task you need to do.
-
-                    initTrackList();
-                    trackAdapter.notifyDataSetChanged();
-
-                } else {
-                    // permission denied, boo! Disable the
-                    // functionality that depends on this permission.
-                    Toast.makeText(this, "FUCK YOU!", Toast.LENGTH_LONG).show();
-                }
-//                return;
-
-            // other 'case' lines to check for other
-            // permissions this app might request.
+        if (requestCode == PERMISSIONS_REQUEST_READ_EXTERNAL_STORAGE) {
+            if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                // Permission granted - load the tracks
+                initTrackList();
+                trackAdapter.notifyDataSetChanged();
+            } else {
+                // Permission denied, notify user and close the app
+                Toast.makeText(this, "Unable to start the app without permissions to access the device storage, please grant them!",
+                        Toast.LENGTH_LONG).show();
+                finish();
+            }
         }
     }
 
