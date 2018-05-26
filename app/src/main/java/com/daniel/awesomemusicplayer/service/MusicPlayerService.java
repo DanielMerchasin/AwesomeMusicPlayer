@@ -43,6 +43,7 @@ public class MusicPlayerService extends Service implements MediaPlayer.OnErrorLi
     private RepeatMode repeatMode;
     private Random random;
     private MusicServiceCallback callback;
+    private boolean playerReady;
 
     @Override
     public void onCreate() {
@@ -54,6 +55,7 @@ public class MusicPlayerService extends Service implements MediaPlayer.OnErrorLi
         shuffle = false;
         repeatMode = RepeatMode.NONE;
         shuffleStack = new Stack<>();
+        playerReady = false;
 
         // Initialize media player
         mediaPlayer = initMediaPlayer();
@@ -95,17 +97,15 @@ public class MusicPlayerService extends Service implements MediaPlayer.OnErrorLi
     }
 
     public void togglePlayPause() {
-        try {
-            if (mediaPlayer.isPlaying()) {
-                pause();
-            } else {
-                mediaPlayer.start();
-                if (callback != null)
-                    callback.onTrackResumed();
-                notifyAndStartForeground("Now Playing...", trackTitle);
-            }
-        } catch (Exception e) {
+        if (mediaPlayer.isPlaying()) {
+            pause();
+        } else if (!playerReady) {
             playTrack();
+        } else {
+            mediaPlayer.start();
+            if (callback != null)
+                callback.onTrackResumed();
+            notifyAndStartForeground("Now Playing...", trackTitle);
         }
     }
 
@@ -117,9 +117,12 @@ public class MusicPlayerService extends Service implements MediaPlayer.OnErrorLi
     }
 
     public void stop() {
-        if (mediaPlayer.isPlaying())
-            mediaPlayer.pause();
-        mediaPlayer.seekTo(0);
+        if (mediaPlayer.isPlaying()) {
+            mediaPlayer.stop();
+//            mediaPlayer.pause();
+//            mediaPlayer.seekTo(0);
+        }
+        playerReady = false;
         if (callback != null)
             callback.onTrackStopped();
         stopForeground(true);
@@ -139,8 +142,10 @@ public class MusicPlayerService extends Service implements MediaPlayer.OnErrorLi
         } else {
             trackIndex++;
             if (trackIndex >= tracks.size()) {
-                trackIndex = 0;
-                if (repeatMode != RepeatMode.REPEAT_ALL) {
+                if (repeatMode == RepeatMode.REPEAT_ALL) {
+                    trackIndex = 0;
+                } else {
+                    trackIndex--;
                     stop();
                     return;
                 }
@@ -172,7 +177,6 @@ public class MusicPlayerService extends Service implements MediaPlayer.OnErrorLi
         mediaPlayer.seekTo(trackTime);
         if (callback != null)
             callback.onPositionChanged(position, trackTime / 1000);
-//        mediaPlayer.seekTo(position);
     }
 
     public int getPosition() {
@@ -213,8 +217,6 @@ public class MusicPlayerService extends Service implements MediaPlayer.OnErrorLi
 
     public void setTracks(ArrayList<Track> tracks) {
         this.tracks = tracks;
-//        Track track = tracks.get(trackIndex);
-//        trackTitle = track.getFullTitle();
     }
 
     public void selectTrack(int trackPosition) {
@@ -266,6 +268,7 @@ public class MusicPlayerService extends Service implements MediaPlayer.OnErrorLi
 
     @Override
     public void onPrepared(MediaPlayer mp) {
+        playerReady = true;
         mp.start();
 
         if (callback != null)

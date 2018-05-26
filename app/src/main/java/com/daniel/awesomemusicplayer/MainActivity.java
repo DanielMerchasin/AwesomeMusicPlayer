@@ -156,28 +156,15 @@ public class MainActivity extends AppCompatActivity implements MusicServiceCallb
         lblTrackName = findViewById(R.id.lblTrackName);
         skbrSlider = findViewById(R.id.skbrSlider);
 
+        // Initialize data from shared preferences
         prefs = getSharedPreferences(PREFS_KEY, MODE_PRIVATE);
-
-        // Initialize values
-        if (savedInstanceState != null) {
-//            // Initialize from savedInstanceState
-//            trackIndex = savedInstanceState.getInt(KEY_TRACK_INDEX);
-//            trackTime = savedInstanceState.getInt(KEY_TRACK_TIME);
-//            btnPlay.setImageDrawable(getDrawable(savedInstanceState.getBoolean(KEY_PLAYING)
-//                    ? android.R.drawable.ic_media_pause
-//                    : android.R.drawable.ic_media_play));
-//            Log.d(LOG_TAG, "Data in savedInstanceState: KEY_TRACK_INDEX = " + trackIndex
-//                    + ", KEY_TRACK_TIME = " + trackTime);
-//            tracks = (ArrayList<Track>) savedInstanceState.getSerializable(KEY_TRACK_LIST);
-        } else {
-            // Initialize from prefs
-            trackIndex = prefs.getInt(KEY_TRACK_INDEX, 0);
-            trackTime = prefs.getInt(KEY_TRACK_TIME, 0);
-        }
+        trackIndex = prefs.getInt(KEY_TRACK_INDEX, 0);
+        trackTime = prefs.getInt(KEY_TRACK_TIME, 0);
+        shuffleEnabled = prefs.getBoolean(KEY_SHUFFLE_ON, false);
+        repeatMode = RepeatMode.values()[prefs.getInt(KEY_REPEAT_MODE, 0)];
 
         // If the tracks haven't been passed in savedInstanceState, load them
-        if (tracks == null)
-            initTrackList();
+        initTrackList();
 
         // If the trackIndex pulled from prefs is larger than the list size,
         // meaning the list has been changed - reset the index
@@ -185,13 +172,15 @@ public class MainActivity extends AppCompatActivity implements MusicServiceCallb
             trackIndex = 0;
 
         // Prepare the UI
-        trackAdapter = new TrackAdapter(this, tracks);
-        lstTracks.setAdapter(trackAdapter);
-        lblPosition.setText(Utils.formatSeconds(trackTime));
         Track track = tracks.get(trackIndex);
         int sliderProgress = (int) ((trackTime * 1000.0f) / track.getDuration() * 100.0f);
         skbrSlider.setProgress(sliderProgress);
-        tracks.get(trackIndex).setSelected(true);
+        track.setSelected(true);
+        lblTrackName.setText(track.getFullTitle());
+        lblTrackName.setText("YOOOOOOOOOOOOOOOOOOOOOOOOOOOOO");
+        trackAdapter = new TrackAdapter(this, tracks);
+        lstTracks.setAdapter(trackAdapter);
+        lblPosition.setText(Utils.formatSeconds(trackTime));
 
         lstTracks.setOnItemClickListener(new AdapterView.OnItemClickListener() {
             @Override
@@ -206,7 +195,7 @@ public class MainActivity extends AppCompatActivity implements MusicServiceCallb
                 musicPlayerService.selectTrack(position);
 
                 // Change play button to pause
-                btnPlay.setImageDrawable(getDrawable(android.R.drawable.ic_media_pause));
+                btnPlay.setImageDrawable(getDrawable(R.drawable.btn_pause));
                 serviceRunning = true;
             }
         });
@@ -338,25 +327,12 @@ public class MainActivity extends AppCompatActivity implements MusicServiceCallb
         trackTimerThread = null;
     }
 
-    @Override
-    protected void onSaveInstanceState(Bundle outState) {
-//        outState.putInt(KEY_TRACK_INDEX, trackIndex);
-//        outState.putInt(KEY_TRACK_TIME, trackTime);
-//        outState.putBoolean(KEY_PLAYING, serviceBound
-//                && serviceRunning && musicPlayerService.isPlaying());
-//        Log.d(LOG_TAG, "Data saved to outState: KEY_TRACK_INDEX = " + trackIndex
-//                + ", KEY_TRACK_TIME = " + trackTime + ", KEY_PLAYING = " + (serviceBound
-//                && serviceRunning && musicPlayerService.isPlaying()));
-        super.onSaveInstanceState(outState);
-    }
-
     private synchronized void updateUI() {
 
-        // TODO: Call this method from onServiceConnected() kthxby
         if (serviceBound) {
             // Pull data from service
-            trackTime = musicPlayerService.getPosition();
             timerRunning = musicPlayerService.isPlaying();
+            trackTime = timerRunning ? musicPlayerService.getPosition() : 0;
 
             // Update the listview
             performTrackListSelection(true);
@@ -365,16 +341,33 @@ public class MainActivity extends AppCompatActivity implements MusicServiceCallb
             Track track = tracks.get(trackIndex);
             int sliderProgress = (int) (trackTime / (track.getDuration() / 1000.0f) * 100.0f);
             skbrSlider.setProgress(sliderProgress);
-            lblTrackName.setText(musicPlayerService.getTrackTitle());
+            lblTrackName.setText(track.getFullTitle());
             lblDuration.setText(Utils.formatMillis(track.getDuration()));
             lblPosition.setText(Utils.formatSeconds(trackTime));
             btnPlay.setImageDrawable(getDrawable(musicPlayerService.isPlaying()
-                    ? android.R.drawable.ic_media_pause
-                    : android.R.drawable.ic_media_play));
+                    ? R.drawable.btn_pause
+                    : R.drawable.btn_play));
 
-            // TODO: Update the RepeatMode and shuffle buttons
+            // Update the RepeatMode and shuffle buttons
             shuffleEnabled = musicPlayerService.isShuffled();
             repeatMode = musicPlayerService.getRepeatMode();
+
+            switch (repeatMode) {
+                case NONE:
+                    btnRepeat.setImageDrawable(getDrawable(R.drawable.btn_repeat_off));
+                    break;
+                case REPEAT_TRACK:
+                    btnRepeat.setImageDrawable(getDrawable(R.drawable.btn_repeat_track));
+                    break;
+                case REPEAT_ALL:
+                    btnRepeat.setImageDrawable(getDrawable(R.drawable.btn_repeat_all));
+                    break;
+            }
+
+            btnShuffle.setImageDrawable(getDrawable(shuffleEnabled
+                    ? R.drawable.btn_shuffle_on
+                    : R.drawable.btn_shuffle_off));
+
         }
 
     }
@@ -601,24 +594,24 @@ public class MainActivity extends AppCompatActivity implements MusicServiceCallb
         lblPosition.setText(Utils.formatMillis(0));
         lblDuration.setText(Utils.formatMillis(track.getDuration()));
         lblTrackName.setText(track.getFullTitle());
-        btnPlay.setImageDrawable(getDrawable(android.R.drawable.ic_media_pause));
+        btnPlay.setImageDrawable(getDrawable(R.drawable.btn_pause));
     }
 
     @Override
     public void onTrackPaused() {
-        btnPlay.setImageDrawable(getDrawable(android.R.drawable.ic_media_play));
+        btnPlay.setImageDrawable(getDrawable(R.drawable.btn_play));
         timerRunning = false;
     }
 
     @Override
     public void onTrackResumed() {
-        btnPlay.setImageDrawable(getDrawable(android.R.drawable.ic_media_pause));
+        btnPlay.setImageDrawable(getDrawable(R.drawable.btn_pause));
         timerRunning = true;
     }
 
     @Override
     public void onTrackStopped() {
-        btnPlay.setImageDrawable(getDrawable(android.R.drawable.ic_media_play));
+        btnPlay.setImageDrawable(getDrawable(R.drawable.btn_play));
         lblPosition.setText(Utils.formatMillis(0));
         skbrSlider.setProgress(0);
         timerRunning = false;
@@ -628,11 +621,31 @@ public class MainActivity extends AppCompatActivity implements MusicServiceCallb
     @Override
     public void onRepeatModeChanged(RepeatMode repeatMode) {
         Log.d(LOG_TAG, "Repeat mode selected: " + repeatMode.toString());
+
+        this.repeatMode = repeatMode;
+
+        switch (repeatMode) {
+            case NONE:
+                btnRepeat.setImageDrawable(getDrawable(R.drawable.btn_repeat_off));
+                break;
+            case REPEAT_TRACK:
+                btnRepeat.setImageDrawable(getDrawable(R.drawable.btn_repeat_track));
+                break;
+            case REPEAT_ALL:
+                btnRepeat.setImageDrawable(getDrawable(R.drawable.btn_repeat_all));
+                break;
+        }
     }
 
     @Override
     public void onShuffleModeChanged(boolean shuffleEnabled) {
         Log.d(LOG_TAG, "Shuffle enabled: " + shuffleEnabled);
+
+        this.shuffleEnabled = shuffleEnabled;
+
+        btnShuffle.setImageDrawable(getDrawable(shuffleEnabled
+                ? R.drawable.btn_shuffle_on
+                : R.drawable.btn_shuffle_off));
     }
 
     @Override
