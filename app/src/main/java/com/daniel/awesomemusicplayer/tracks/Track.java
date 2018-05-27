@@ -4,9 +4,11 @@ import com.daniel.awesomemusicplayer.util.Utils;
 
 import java.io.Serializable;
 
-public class Track implements Serializable {
-
-    private static final long serialVersionUID = 1L;
+/**
+ * Track - data model representing a track (song)
+ * Contains dynamic boolean variables that represent the state of the track (selected/playing)
+ */
+public class Track {
 
     private long id;
     private String title;

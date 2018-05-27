@@ -8,6 +8,10 @@ import android.app.NotificationManager;
 import android.os.Build;
 import android.util.Log;
 
+/**
+ * Main Application class
+ * Handles the notification channel for the foreground service
+ */
 public class App extends Application {
 
     private static final String LOG_TAG = App.class.getSimpleName();
@@ -19,8 +23,10 @@ public class App extends Application {
     public void onCreate() {
         super.onCreate();
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O)
+            // Create the channel
             createNotificationChannel();
         else
+            // No need to use channels
             Log.d(LOG_TAG, "Notification channel not created.");
     }
 

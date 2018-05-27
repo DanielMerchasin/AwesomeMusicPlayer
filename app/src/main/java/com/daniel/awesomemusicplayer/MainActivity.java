@@ -51,15 +51,17 @@ import java.util.Comparator;
  * 1. onStart:
  *      The service is initialized and bound.
  *      TrackTimerThread is initialized and launched.
-
+ *
  * 2. onServiceConnected:
  *      The necessary data is passed to the service.
  *      If the track list is already loaded on the service, use it in the activity
+ *      If the track list hasn't been loaded - load it from the device storage
  *
  * 3. onResume:
  *      The UI is updating using data from the service.
  *
  * 4. onStop:
+ *      TrackTimerThread is stopped.
  *      The service callback is removed.
  *      The service is unbound.
  *      If the music player is stopped - the service is stopped as well.
@@ -70,10 +72,10 @@ public class MainActivity extends AppCompatActivity implements MusicServiceCallb
     /** Log tag */
     private static final String LOG_TAG         = "MainActivity";
 
-    /** SharedPreferences Key*/
+    /** SharedPreferences Key */
     public static final String PREFS_KEY        = "com.daniel.awesomemusicplayer";
 
-    /** Key constants for instance state and shared preferences */
+    /** Key constants for shared preferences */
     private static final String KEY_TRACK_INDEX = "KEY_TRACK_INDEX";
     private static final String KEY_TRACK_TIME  = "KEY_TRACK_TIME";
     private static final String KEY_SHUFFLE_ON  = "KEY_SHUFFLE_ON";
@@ -135,10 +137,11 @@ public class MainActivity extends AppCompatActivity implements MusicServiceCallb
     private int trackTime;
 
     /** Should the timer run? True when a track is playing, otherwise false */
-    private volatile boolean timerRunning;
+    private boolean timerRunning;
 
     /** Handler used to update the UI from the TrackTimerThread */
     private final Handler handler = new Handler();
+
 
     // --- Activity lifecycle methods
 
@@ -198,6 +201,7 @@ public class MainActivity extends AppCompatActivity implements MusicServiceCallb
         btnStop.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
+                // Stop button clicked, stop the playback on the service
                 if (!serviceBound) return;
                 musicPlayerService.stop();
                 serviceRunning = false;
@@ -207,6 +211,7 @@ public class MainActivity extends AppCompatActivity implements MusicServiceCallb
         btnNext.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
+                // Play the next track
                 if (!serviceBound) return;
                 musicPlayerService.playNext();
                 performTrackListSelection(true);
@@ -216,6 +221,7 @@ public class MainActivity extends AppCompatActivity implements MusicServiceCallb
         btnPrevious.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
+                // Play the previous track
                 if (!serviceBound) return;
                 musicPlayerService.playPrevious();
                 performTrackListSelection(true);
@@ -240,9 +246,8 @@ public class MainActivity extends AppCompatActivity implements MusicServiceCallb
         btnShuffle.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                if (!serviceBound)
-                    return;
-
+                // Toggle shuffle mode on the service
+                if (!serviceBound) return;
                 musicPlayerService.toggleShuffle();
             }
         });
@@ -250,9 +255,8 @@ public class MainActivity extends AppCompatActivity implements MusicServiceCallb
         btnRepeat.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                if (!serviceBound)
-                    return;
-
+                // Toggle repeat mode on the service
+                if (!serviceBound) return;
                 musicPlayerService.toggleRepeatMode();
             }
         });
@@ -262,7 +266,11 @@ public class MainActivity extends AppCompatActivity implements MusicServiceCallb
     @Override
     protected void onStart() {
         super.onStart();
+
+        // Start and bind the service
         initService();
+
+        // Initialize and start the timer thread
         trackTimerThread = new TrackTimerThread();
         trackTimerThread.start();
     }
@@ -270,6 +278,8 @@ public class MainActivity extends AppCompatActivity implements MusicServiceCallb
     @Override
     protected void onResume() {
         super.onResume();
+
+        // Update the UI using data from the service
         updateUI();
     }
 
@@ -309,7 +319,30 @@ public class MainActivity extends AppCompatActivity implements MusicServiceCallb
         trackTimerThread = null;
     }
 
-    private synchronized void updateUI() {
+    @Override
+    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
+        if (requestCode == PERMISSIONS_REQUEST_READ_EXTERNAL_STORAGE) {
+            if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                // Permission granted - load the tracks
+                Log.d(LOG_TAG, "Permission granted.");
+                initTrackList();
+            } else {
+                // Permission denied, notify user and close the app
+                Log.d(LOG_TAG, "Permission denied.");
+                Toast.makeText(this, "Unable to start the app without permissions to access the device storage, please grant them!",
+                        Toast.LENGTH_LONG).show();
+                finish();
+            }
+        }
+    }
+
+
+    // --- Helper methods
+
+    /**
+     * This method updates the UI based on data from the service
+     */
+    private void updateUI() {
 
         if (serviceBound) {
             // Pull data from service
@@ -321,7 +354,8 @@ public class MainActivity extends AppCompatActivity implements MusicServiceCallb
             repeatMode = musicPlayerService.getRepeatMode();
 
             if (tracks.size() > 0) {
-                // Update the listview
+
+                // Update the ListView and select the track
                 performTrackListSelection(true);
 
                 // Update UI components
@@ -360,7 +394,7 @@ public class MainActivity extends AppCompatActivity implements MusicServiceCallb
     }
 
     /**
-     * Service connection
+     * Service connection - determines behaviour on service binding
      */
     private ServiceConnection musicServiceConnection = new ServiceConnection() {
         @Override
@@ -398,6 +432,9 @@ public class MainActivity extends AppCompatActivity implements MusicServiceCallb
         }
     };
 
+    /**
+     * Start and bind the service
+     */
     private void initService() {
         Log.d(LOG_TAG, "Initializing service.");
         if (serviceIntent == null)
@@ -408,6 +445,9 @@ public class MainActivity extends AppCompatActivity implements MusicServiceCallb
             bindService(serviceIntent, musicServiceConnection, BIND_AUTO_CREATE);
     }
 
+    /**
+     * Load the track list from the device's external storage
+     */
     private void initTrackList() {
 
         if (tracks == null)
@@ -424,18 +464,20 @@ public class MainActivity extends AppCompatActivity implements MusicServiceCallb
 
         Log.d(LOG_TAG, "Reading tracks...");
 
-        // Query
+        // Load the tracks
         ContentResolver contentResolver = getContentResolver();
-        Uri musicUri = MediaStore.Audio.Media.EXTERNAL_CONTENT_URI;
-        Cursor c = contentResolver.query(musicUri, null, null, null, null);
+        Cursor c = contentResolver.query(MediaStore.Audio.Media.EXTERNAL_CONTENT_URI,
+                null, null, null, MediaStore.Audio.Media.TITLE + " ASC");
         if (c != null && c.moveToFirst()) {
 
+            // Save the column indexes to variables
             int idColumn = c.getColumnIndex(MediaStore.Audio.Media._ID);
             int titleColumn = c.getColumnIndex(MediaStore.Audio.Media.TITLE);
             int artistColumn = c.getColumnIndex(MediaStore.Audio.Media.ARTIST);
             int durationColumn = c.getColumnIndex(MediaStore.Audio.Media.DURATION);
             int albumIdColumn = c.getColumnIndex(MediaStore.Audio.Media.ALBUM_ID);
 
+            // Create the track objects and add them to the list
             do {
                 Track track = new Track();
                 track.setId(c.getLong(idColumn));
@@ -449,12 +491,12 @@ public class MainActivity extends AppCompatActivity implements MusicServiceCallb
         }
 
         // Sort
-        Collections.sort(tracks, new Comparator<Track>() {
-            @Override
-            public int compare(Track t1, Track t2) {
-                return t1.getTitle().compareToIgnoreCase(t2.getTitle());
-            }
-        });
+//        Collections.sort(tracks, new Comparator<Track>() {
+//            @Override
+//            public int compare(Track t1, Track t2) {
+//                return t1.getTitle().compareToIgnoreCase(t2.getTitle());
+//            }
+//        });
 
         // Pass the track list to the service
         if (serviceBound) {
@@ -480,9 +522,15 @@ public class MainActivity extends AppCompatActivity implements MusicServiceCallb
         updateAlbumImage(track);
     }
 
+    /**
+     * Get the album art path using the album ID
+     * @param albumId Album ID
+     * @return the path to the album thumb art as string
+     */
     private String getAlbumArtURI(int albumId) {
         String result = null;
 
+        // Query
         Cursor cursor = getContentResolver().query(
                 MediaStore.Audio.Albums.EXTERNAL_CONTENT_URI,
                 new String[] {MediaStore.Audio.Albums.ALBUM_ART},
@@ -491,6 +539,7 @@ public class MainActivity extends AppCompatActivity implements MusicServiceCallb
                 null
         );
 
+        // If data exists - grab it
         if (cursor != null) {
             if (cursor.moveToFirst()) {
                 result = cursor.getString(
@@ -502,6 +551,10 @@ public class MainActivity extends AppCompatActivity implements MusicServiceCallb
         return result;
     }
 
+    /**
+     * Handles track selection on the ListView
+     * @param moveToItem if true, the ListView will scroll to the item position
+     */
     private void performTrackListSelection(boolean moveToItem) {
         if (!serviceBound)
             return;
@@ -515,6 +568,10 @@ public class MainActivity extends AppCompatActivity implements MusicServiceCallb
         Log.d(LOG_TAG, "Performing selection: " + trackIndex);
     }
 
+    /**
+     * Load the album art image of the selected track to the imgAlbum ImageView
+     * @param track selected track
+     */
     private void updateAlbumImage(Track track) {
         Log.d(LOG_TAG, "Track Album URI: " + track.getAlbumArtURI());
         if (track.getAlbumArtURI() != null) {
@@ -525,23 +582,6 @@ public class MainActivity extends AppCompatActivity implements MusicServiceCallb
                     .into(imgAlbum);
         } else {
             imgAlbum.setImageDrawable(getDrawable(R.drawable.amp_icon));
-        }
-    }
-
-    @Override
-    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
-        if (requestCode == PERMISSIONS_REQUEST_READ_EXTERNAL_STORAGE) {
-            if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                // Permission granted - load the tracks
-                Log.d(LOG_TAG, "Permission granted.");
-                initTrackList();
-            } else {
-                // Permission denied, notify user and close the app
-                Log.d(LOG_TAG, "Permission denied.");
-                Toast.makeText(this, "Unable to start the app without permissions to access the device storage, please grant them!",
-                        Toast.LENGTH_LONG).show();
-                finish();
-            }
         }
     }
 
@@ -583,8 +623,11 @@ public class MainActivity extends AppCompatActivity implements MusicServiceCallb
         }
     }
 
+    // --- MusicServiceCallback methods
+
     @Override
     public void onTrackStarted(int trackIndex) {
+        // Update UI
         trackAdapter.notifyDataSetChanged();
         performTrackListSelection(shuffleEnabled);
         timerRunning = true;
@@ -664,7 +707,7 @@ public class MainActivity extends AppCompatActivity implements MusicServiceCallb
     }
 
     @Override
-    public void onPositionChanged(int position, int trackTime) {
+    public void onPositionChanged(int trackTime) {
         this.trackTime = trackTime;
         lblPosition.setText(Utils.formatSeconds(trackTime));
     }

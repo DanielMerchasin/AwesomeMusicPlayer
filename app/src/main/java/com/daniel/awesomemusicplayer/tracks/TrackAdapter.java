@@ -18,6 +18,9 @@ import com.daniel.awesomemusicplayer.util.Utils;
 
 import java.util.List;
 
+/**
+ * Adapter for the Tracks ListView in MainActivity - lstTracks
+ */
 public class TrackAdapter extends ArrayAdapter<Track> {
 
     public TrackAdapter(@NonNull Context context, List<Track> items) {
@@ -30,6 +33,7 @@ public class TrackAdapter extends ArrayAdapter<Track> {
 
         ViewHolder viewHolder;
         if (convertView == null) {
+            // Initialize the view and the ViewHolder
             convertView = LayoutInflater.from(getContext())
                     .inflate(R.layout.row_track, parent, false);
 
@@ -44,13 +48,16 @@ public class TrackAdapter extends ArrayAdapter<Track> {
             convertView.setTag(viewHolder);
 
         } else {
+            // Get ViewHolder from tag
             viewHolder = (ViewHolder) convertView.getTag();
         }
 
+        // Get the item
         Track track = getItem(position);
 
         if (track != null) {
 
+            // Set the background - tiles of grey for all rows, accent color for the selected row
             viewHolder.background.setBackgroundColor(getContext().getColor(
                     track.isSelected()
                             ? R.color.colorAccent
@@ -58,6 +65,7 @@ public class TrackAdapter extends ArrayAdapter<Track> {
                             ? R.color.colorTrackListBackgroundOne
                             : R.color.colorTrackListBackgroundTwo));
 
+            // Set values for the UI components
             viewHolder.lblTitle.setText(track.getTitle());
             viewHolder.lblArtist.setText(track.getArtist());
             viewHolder.lblDuration.setText(Utils.formatMillis(track.getDuration()));
@@ -65,12 +73,14 @@ public class TrackAdapter extends ArrayAdapter<Track> {
             if (track.isSelected()) {
                 viewHolder.imgEqualizer.setVisibility(View.VISIBLE);
                 if (track.isPlaying()) {
+                    // The track is playing - show the animated equalizer
                     Glide.with(getContext())
                             .load(R.drawable.equalizer)
                             .asGif()
                             .diskCacheStrategy(DiskCacheStrategy.SOURCE)
                             .into(viewHolder.imgEqualizer);
                 } else {
+                    // The track is selected but isn't playing - show the equalizer bitmap
                     Glide.with(getContext())
                             .load(R.drawable.equalizer)
                             .asBitmap()
@@ -78,6 +88,7 @@ public class TrackAdapter extends ArrayAdapter<Track> {
                             .into(viewHolder.imgEqualizer);
                 }
             } else {
+                // The track isn't selected - remove the image from the ImageView and hide it
                 viewHolder.imgEqualizer.setImageDrawable(null);
                 viewHolder.imgEqualizer.setVisibility(View.GONE);
             }

@@ -1,5 +1,8 @@
 package com.daniel.awesomemusicplayer.util;
 
+/**
+ * Utilities class - contains static utility methods
+ */
 public class Utils {
 
     public static String formatSeconds(long seconds) {

@@ -8,12 +8,13 @@
 
     <ListView
         android:id="@+id/lstTracks"
+        android:background="@color/colorTrackListBackgroundTwo"
         android:layout_width="match_parent"
         android:layout_weight="1"
         android:dividerHeight="1dp"
-        android:divider="#AFAFAF"
+        android:divider="@color/colorTrackListDivider"
         android:layout_height="0dp"/>
-
+    
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
@@ -114,7 +115,7 @@
                 android:layout_weight="1"
                 android:layout_height="wrap_content"
                 android:textColor="@android:color/white"
-                android:text="00:21"/>
+                android:text="00:00"/>
 
             <SeekBar
                 android:id="@+id/skbrSlider"
@@ -128,7 +129,7 @@
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
                 android:textColor="@android:color/white"
-                android:text="08:40"/>
+                android:text="00:00"/>
 
         </LinearLayout>
 

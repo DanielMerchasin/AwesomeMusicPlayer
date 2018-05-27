@@ -15,9 +15,9 @@
 
         <TextView
             android:id="@+id/lblTitle"
-            android:layout_width="wrap_content"
+            android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:text="The Baying of the Hounds"
+            android:text="Sandstorm"
             android:textStyle="bold"
             android:textColor="@color/colorTrackListText"
             android:textAppearance="@style/Base.TextAppearance.AppCompat.Medium"
@@ -45,7 +45,7 @@
             android:layout_height="wrap_content"
             android:layout_weight="1"
             android:textColor="@color/colorTrackListText"
-            android:text="Ghost Reveries"
+            android:text="Darude"
             android:ellipsize="end"
             android:maxLines="1"/>
 

@@ -27,32 +27,64 @@ import java.util.ArrayList;
 import java.util.Random;
 import java.util.Stack;
 
+/**
+ * MusicPlayerService is in charge of playing the music using the android.media.MediaPlayer class,
+ * handling track index movements and responding to user generated events.
+ * After an event is handled, the service communicates back to MainActivity using the
+ * MusicServiceCallback interface.
+ * The rules of communication and binding are described in MainActivity.
+ */
 public class MusicPlayerService extends Service implements MediaPlayer.OnErrorListener,
         MediaPlayer.OnCompletionListener, MediaPlayer.OnPreparedListener {
 
     /** Log tag */
     private static final String LOG_TAG         = "MusicPlayerService";
 
-    /**  */
+    /** Foreground notification ID */
     private static final int NOTIFICATION_ID    = 1234;
 
+    /** MediaPlayer instance */
     private MediaPlayer mediaPlayer;
-    private ArrayList<Track> tracks;
-    private int trackIndex;
+
+    /** Binder instance */
     private final IBinder musicServiceBinder = new MusicServiceBinder();
-    private String trackTitle;
-    private boolean shuffle;
-    private Stack<Integer> shuffleStack;
-    private RepeatMode repeatMode;
-    private Random random;
+
+    /** Communication interface */
     private MusicServiceCallback callback;
+
+    /** The track playlist */
+    private ArrayList<Track> tracks;
+
+    /** Index of the selected track */
+    private int trackIndex;
+
+    /** Full track title to be displayed */
+    private String trackTitle;
+
+    /** Shuffle mode */
+    private boolean shuffle;
+
+    /** Stack of track indexes saved when traversing the track list with shuffle mode enabled */
+    private Stack<Integer> shuffleStack;
+
+    /** Random number generator for shuffling */
+    private Random random;
+
+    /** Repeat mode */
+    private RepeatMode repeatMode;
+
+    /** Variable that determines if the media player is either playing or paused (not stopped) */
     private boolean playerReady;
+
+
+    // --- Service lifecycle methods
 
     @Override
     public void onCreate() {
         super.onCreate();
         Log.i(LOG_TAG, "In onCreate.");
 
+        // Initialize default values
         trackIndex = 0;
         random = new Random();
         shuffle = false;
@@ -66,6 +98,25 @@ public class MusicPlayerService extends Service implements MediaPlayer.OnErrorLi
         Log.d(LOG_TAG, "Service created.");
     }
 
+    @Nullable
+    @Override
+    public IBinder onBind(Intent intent) {
+        return musicServiceBinder;
+    }
+
+    @Override
+    public void onDestroy() {
+        Log.i(LOG_TAG, "In onDestroy.");
+        mediaPlayer.release();
+    }
+
+
+    // --- Helper methods
+
+    /**
+     * Instantiates and initializes the MediaPlayer, sets the listeners
+     * @return the initialized MediaPlayer
+     */
     private MediaPlayer initMediaPlayer() {
         MediaPlayer mp = new MediaPlayer();
         mp.setAudioAttributes(new AudioAttributes.Builder()
@@ -74,20 +125,26 @@ public class MusicPlayerService extends Service implements MediaPlayer.OnErrorLi
         mp.setOnPreparedListener(this);
         mp.setOnErrorListener(this);
         mp.setOnCompletionListener(this);
-        mp.reset();
         return mp;
     }
 
+    /**
+     * Plays the selected track from the start
+     */
     public void playTrack() {
+        // Reset the player
         mediaPlayer.reset();
 
+        // Get the track title and update it's state to "playing"
         Track track = tracks.get(trackIndex);
         trackTitle = track.getArtist() + " - " + track.getTitle();
         track.setPlaying(true);
 
+        // Get the track URI
         Uri trackUri = ContentUris.withAppendedId(
                 MediaStore.Audio.Media.EXTERNAL_CONTENT_URI, track.getId());
 
+        // Set the data source
         try {
             mediaPlayer.setDataSource(getApplicationContext(), trackUri);
         } catch (Exception e) {
@@ -97,44 +154,80 @@ public class MusicPlayerService extends Service implements MediaPlayer.OnErrorLi
             return;
         }
 
+        // Prepare the track asynchronously
         mediaPlayer.prepareAsync();
     }
 
+    /**
+     * Toggles between play and pause
+     */
     public void togglePlayPause() {
         if (mediaPlayer.isPlaying()) {
+            // If the track is playing - pause it
             pause();
         } else if (!playerReady) {
+            // If the track is not playing and the media player is stopped,
+            // reset and prepare a new track
             playTrack();
         } else {
+            // If the track is not playing and the media player is ready, resume it
             mediaPlayer.start();
 
+            // Update the state
             tracks.get(trackIndex).setPlaying(true);
 
+            // Callback
             if (callback != null)
                 callback.onTrackResumed();
+
+            // Start "Playing" foreground notification
             notifyAndStartForeground("Now Playing...", trackTitle);
         }
     }
 
+    /**
+     * Pauses the track
+     */
     public void pause() {
+        // Pause the track and update the state
         mediaPlayer.pause();
         tracks.get(trackIndex).setPlaying(false);
+
+        // Callback
         if (callback != null)
             callback.onTrackPaused();
+
+        // Start "Paused" foreground notification
         notifyAndStartForeground("Paused", trackTitle);
     }
 
+    /**
+     * Stops the media player
+     */
     public void stop() {
+        // Update the track state
         tracks.get(trackIndex).setPlaying(false);
+
+        // Stop the media player
         if (mediaPlayer.isPlaying())
             mediaPlayer.stop();
+
         playerReady = false;
+
+        // Callback
         if (callback != null)
             callback.onTrackStopped();
+
+        // Stop the foreground notification
         stopForeground(true);
     }
 
+    /**
+     * Calculates the next track to select, while considering shuffle mode,
+     * shuffle stack and repeat mode.
+     */
     public void playNext() {
+        // Update the track state
         tracks.get(trackIndex).setPlaying(false);
 
         if (shuffle) {
@@ -160,9 +253,14 @@ public class MusicPlayerService extends Service implements MediaPlayer.OnErrorLi
                 }
             }
         }
+
+        // The new index is selected - play the track
         playTrack();
     }
 
+    /**
+     * Calculates the previous track to select, while considering shuffle mode and shuffle stack.
+     */
     public void playPrevious() {
         tracks.get(trackIndex).setPlaying(false);
         if (shuffle && !shuffleStack.isEmpty()) {
@@ -172,6 +270,8 @@ public class MusicPlayerService extends Service implements MediaPlayer.OnErrorLi
             if (trackIndex < 0)
                 trackIndex = tracks.size() - 1;
         }
+
+        // The new index is selected - play the track
         playTrack();
     }
 
@@ -183,15 +283,16 @@ public class MusicPlayerService extends Service implements MediaPlayer.OnErrorLi
 
     public ArrayList<Track> getTracks() { return tracks; }
 
+    /**
+     * Seeks to the requested position in the track
+     * @param position the requested position
+     */
     public void seekTo(int position) {
         if (playerReady) {
             int trackTime = (int) (mediaPlayer.getDuration() / 100.0f * position);
-            Log.d(LOG_TAG, "seekTo() called. position: " + position + ", track time: " + trackTime
-                    + ", formatted millis: " + Utils.formatMillis(trackTime)
-                    + ", formatted seconds: " + Utils.formatSeconds(trackTime));
             mediaPlayer.seekTo(trackTime);
             if (callback != null)
-                callback.onPositionChanged(position, trackTime / 1000);
+                callback.onPositionChanged(trackTime / 1000);
         }
     }
 
@@ -207,6 +308,9 @@ public class MusicPlayerService extends Service implements MediaPlayer.OnErrorLi
         return shuffle;
     }
 
+    /**
+     * Toggles shuffle mode
+     */
     public void toggleShuffle() {
         shuffle = !shuffle;
         if (callback != null)
@@ -217,6 +321,9 @@ public class MusicPlayerService extends Service implements MediaPlayer.OnErrorLi
         return repeatMode;
     }
 
+    /**
+     * Toggles repeat mode
+     */
     public void toggleRepeatMode() {
         repeatMode = RepeatMode.values()[(repeatMode.ordinal() + 1) % RepeatMode.values().length];
         if (callback != null)
@@ -235,6 +342,10 @@ public class MusicPlayerService extends Service implements MediaPlayer.OnErrorLi
         this.tracks = tracks;
     }
 
+    /**
+     * Convenience method, select a new index and play the track
+     * @param trackPosition the new index
+     */
     public void selectTrack(int trackPosition) {
         // Track selected manually, clear the shuffle stack
         shuffleStack.clear();
@@ -258,6 +369,33 @@ public class MusicPlayerService extends Service implements MediaPlayer.OnErrorLi
     public void setCallback(MusicServiceCallback callback) {
         this.callback = callback;
     }
+
+    /**
+     * Creates a notification and starts foreground
+     * @param title notification title
+     * @param message notification content text and ticker
+     */
+    private void notifyAndStartForeground(String title, String message) {
+        // Build the notification and start the foreground service
+        Intent notificationIntent = new Intent(this, MainActivity.class);
+        notificationIntent.addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP);
+        PendingIntent pendingIntent = PendingIntent.getActivity(this, 0,
+                notificationIntent, PendingIntent.FLAG_UPDATE_CURRENT);
+
+        Notification notification = new NotificationCompat.Builder(this, App.SERVICE_CHANNEL_ID)
+                .setSmallIcon(R.drawable.amp_icon_alpha)
+                .setContentIntent(pendingIntent)
+                .setContentTitle(title)
+                .setContentText(message)
+                .setTicker(message)
+                .setOngoing(true)
+                .build();
+
+        startForeground(NOTIFICATION_ID, notification);
+    }
+
+
+    // --- MediaPlayer interfaces methods
 
     @Override
     public void onCompletion(MediaPlayer mp) {
@@ -293,41 +431,13 @@ public class MusicPlayerService extends Service implements MediaPlayer.OnErrorLi
         notifyAndStartForeground("Now Playing...", trackTitle);
     }
 
-    private void notifyAndStartForeground(String title, String message) {
-        // Build the notification and start the foreground service
-        Intent notificationIntent = new Intent(this, MainActivity.class);
-        notificationIntent.addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP);
-        PendingIntent pendingIntent = PendingIntent.getActivity(this, 0,
-                notificationIntent, PendingIntent.FLAG_UPDATE_CURRENT);
-
-        Notification notification = new NotificationCompat.Builder(this, App.SERVICE_CHANNEL_ID)
-                .setSmallIcon(R.drawable.amp_icon_alpha)
-                .setContentIntent(pendingIntent)
-                .setContentTitle(title)
-                .setContentText(message)
-                .setTicker(message)
-                .setOngoing(true)
-                .build();
-
-        startForeground(NOTIFICATION_ID, notification);
-    }
-
+    /**
+     * The service binder
+     */
     public class MusicServiceBinder extends Binder {
         public MusicPlayerService getService() {
             return MusicPlayerService.this;
         }
-    }
-
-    @Nullable
-    @Override
-    public IBinder onBind(Intent intent) {
-        return musicServiceBinder;
-    }
-
-    @Override
-    public void onDestroy() {
-        Log.i(LOG_TAG, "In onDestroy.");
-        mediaPlayer.release();
     }
 
 }
