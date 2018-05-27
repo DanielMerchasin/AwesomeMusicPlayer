@@ -284,6 +284,17 @@ public class MainActivity extends AppCompatActivity implements MusicServiceCallb
     }
 
     @Override
+    protected void onPause() {
+        super.onPause();
+        // If the track is paused, save the position to prefs
+        if (serviceRunning && !musicPlayerService.isPlaying()) {
+            prefs.edit()
+                    .putInt(KEY_TRACK_TIME, trackTime)
+                    .apply();
+        }
+    }
+
+    @Override
     protected void onStop() {
         super.onStop();
 
@@ -306,12 +317,6 @@ public class MainActivity extends AppCompatActivity implements MusicServiceCallb
                     .apply();
 
             stopService(serviceIntent);
-        } else {
-            // If the service is still running, the track might be paused
-            // Save the position of the track
-            prefs.edit()
-                    .putInt(KEY_TRACK_TIME, trackTime)
-                    .apply();
         }
 
         // Stop the track timer thread to prevent unnecessary memory consumption
