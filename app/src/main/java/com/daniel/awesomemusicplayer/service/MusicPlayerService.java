@@ -227,8 +227,10 @@ public class MusicPlayerService extends Service implements MediaPlayer.OnErrorLi
      * shuffle stack and repeat mode.
      */
     public void playNext() {
-        // Update the track state
-        tracks.get(trackIndex).setPlaying(false);
+        // Deselect the last track
+        Track lastTrack = tracks.get(trackIndex);
+        lastTrack.setPlaying(false);
+        lastTrack.setSelected(false);
 
         if (shuffle) {
             // Save last song in stack
@@ -262,7 +264,11 @@ public class MusicPlayerService extends Service implements MediaPlayer.OnErrorLi
      * Calculates the previous track to select, while considering shuffle mode and shuffle stack.
      */
     public void playPrevious() {
-        tracks.get(trackIndex).setPlaying(false);
+        // Deselect the last track
+        Track lastTrack = tracks.get(trackIndex);
+        lastTrack.setPlaying(false);
+        lastTrack.setSelected(false);
+
         if (shuffle && !shuffleStack.isEmpty()) {
             trackIndex = shuffleStack.pop();
         } else {
