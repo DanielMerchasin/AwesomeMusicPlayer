@@ -5,6 +5,10 @@ import android.util.Log;
 import com.daniel.awesomemusicplayer.tracks.Track;
 import com.daniel.awesomemusicplayer.util.Utils;
 
+/**
+ * LyricsFinder is responsible for executing an HTTP request to azlyrics.com.
+ * It finds, reads and parses the lyrics of a requested track (song).
+ */
 public class LyricsFinder {
 
     /** Callback to MainActivity */
@@ -31,13 +35,17 @@ public class LyricsFinder {
 
     /**
      * Get the lyrics for the selected track.
-     * Don't call lyricsFinderListener.onResult() if lyrics are not found.
+     * This method passes null to lyricsFinderListener.onResult() if lyrics are not found.
      * @param track The selected track
      */
     public void parse(Track track) {
         // Abort the previous request and start a new one
-        stopTask();
+        if (task != null) {
+            task.stop();
+            task = null;
+        }
 
+        // Initialize the task
         RequestExecutor requestExecutor = new RequestExecutor(new RequestListener() {
             @Override
             public String doOnBackgroundThread(String result) {
@@ -89,7 +97,7 @@ public class LyricsFinder {
 
             String rawText = data.substring(startPoint, data.indexOf("</div>", startPoint));
 
-            // Convert HTML code to plain text
+            // Convert HTML special characters and tags to text
             return Utils.translateSpecialHTMLCharacters(rawText)
                     .replaceAll("<br>", "\r\n")
                     .replaceAll("<i>", "")
@@ -97,16 +105,6 @@ public class LyricsFinder {
         }
 
         return null;
-    }
-
-    /**
-     * Stops the running AsyncTask
-     */
-    private void stopTask() {
-        if (task != null) {
-            task.stop();
-            task = null;
-        }
     }
 
 }
