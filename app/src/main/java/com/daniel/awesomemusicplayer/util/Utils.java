@@ -11,22 +11,12 @@ public class Utils {
 
     public static String formatMillis(long millis) {
         StringBuilder sb = new StringBuilder();
-        String sign = "";
-
-        // Add sign if needed
-        if (millis < 0) {
-            sign = "-";
-            millis *= -1;
-        }
 
         // Calculate and format
-//        apd(sb, sign, 0, (millis / 3600000));
         millis %= 3600000;
         apd(sb, "", 2, (millis / 60000));
         millis %= 60000;
         apd(sb, ":", 2, (millis / 1000));
-//        millis %= 1000;
-//        apd(sb, ".", 3, millis);
 
         return sb.toString();
     }

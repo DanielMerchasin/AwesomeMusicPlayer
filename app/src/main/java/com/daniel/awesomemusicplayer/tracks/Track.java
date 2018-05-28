@@ -10,12 +10,25 @@ import java.io.Serializable;
  */
 public class Track {
 
+    /** Track ID */
     private long id;
+
+    /** Track title (name) */
     private String title;
+
+    /** Name of the artist */
     private String artist;
+
+    /** Duration of the track in milliseconds*/
     private long duration;
+
+    /** Is the track selected? */
     private boolean selected;
+
+    /** Is the track playing? */
     private boolean playing;
+
+    /** Path to the album art image */
     private String albumArtURI;
 
     public Track() {}

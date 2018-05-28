@@ -100,7 +100,7 @@ public class MainActivity extends AppCompatActivity implements MusicServiceCallb
 
     /**
      * Is the service running?
-     * A flag used to decide whether to stopTask the service in onStop
+     * A flag used to decide whether to stop the service in onStop
      */
     private boolean serviceRunning;
 
@@ -240,7 +240,7 @@ public class MainActivity extends AppCompatActivity implements MusicServiceCallb
         btnStop.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                // Stop button clicked, stopTask the playback on the service
+                // Stop button clicked, stop the playback on the service
                 if (!serviceBound) return;
                 musicPlayerService.stop();
                 serviceRunning = false;
@@ -337,14 +337,14 @@ public class MainActivity extends AppCompatActivity implements MusicServiceCallb
     protected void onStop() {
         super.onStop();
 
-        // Unbind the service, don't stopTask it just yet
+        // Unbind the service, don't stop it just yet
         if (serviceBound) {
             musicPlayerService.setCallback(null);
             unbindService(musicServiceConnection);
             serviceBound = false;
         }
 
-        // If the media player and the activity are stopped - stopTask the service and close the basta
+        // If the media player and the activity are stopped - stop the service and close the basta
         if (!serviceRunning) {
 
             // Save preferences
@@ -365,6 +365,7 @@ public class MainActivity extends AppCompatActivity implements MusicServiceCallb
 
     @Override
     public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
+        // Check if the user granted the read external storage permission
         if (requestCode == PERMISSIONS_REQUEST_READ_EXTERNAL_STORAGE) {
             if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
                 // Permission granted - load the tracks
@@ -505,9 +506,11 @@ public class MainActivity extends AppCompatActivity implements MusicServiceCallb
      */
     private void initTrackList() {
 
+        // Initialize the track list
         if (tracks == null)
             tracks = new ArrayList<>();
 
+        // Check permissions
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
             if (checkSelfPermission(Manifest.permission.READ_EXTERNAL_STORAGE)
                     != PackageManager.PERMISSION_GRANTED) {
