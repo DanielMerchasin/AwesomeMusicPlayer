@@ -76,7 +76,6 @@ public class MusicPlayerService extends Service implements MediaPlayer.OnErrorLi
     /** Variable that determines if the media player is either playing or paused (not stopped) */
     private boolean playerReady;
 
-
     // --- Service lifecycle methods
 
     @Override
@@ -109,7 +108,6 @@ public class MusicPlayerService extends Service implements MediaPlayer.OnErrorLi
         Log.i(LOG_TAG, "In onDestroy.");
         mediaPlayer.release();
     }
-
 
     // --- Helper methods
 

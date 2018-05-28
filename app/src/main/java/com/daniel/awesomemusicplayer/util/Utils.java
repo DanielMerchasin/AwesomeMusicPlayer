@@ -44,6 +44,14 @@ public class Utils {
         sb.append(val);
     }
 
+    public static String translateSpecialHTMLCharacters(String input) {
+        return input
+                .replaceAll("&amp;", "&")
+                .replaceAll("&lt;", "<")
+                .replaceAll("&gt;", ">")
+                .replaceAll("&quot;", "\"")
+                .replaceAll("&apos;", "'");
+    }
 
 }
 

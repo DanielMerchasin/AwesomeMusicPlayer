@@ -6,14 +6,38 @@
     android:orientation="vertical"
     tools:context="com.daniel.awesomemusicplayer.MainActivity">
 
-    <ListView
-        android:id="@+id/lstTracks"
-        android:background="@color/colorTrackListBackgroundTwo"
+    <FrameLayout
         android:layout_width="match_parent"
-        android:layout_weight="1"
-        android:dividerHeight="1dp"
-        android:divider="@color/colorTrackListDivider"
-        android:layout_height="0dp"/>
+        android:layout_height="0dp"
+        android:layout_weight="1">
+
+        <ListView
+            android:id="@+id/lstTracks"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:dividerHeight="1dp"
+            android:divider="@color/colorTrackListDivider"
+            android:background="@color/colorTrackListBackgroundTwo"/>
+
+        <ScrollView
+            android:id="@+id/scrLyricsPanel"
+            android:visibility="gone"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:background="@color/colorLyricsPanelBackground">
+
+            <TextView
+                android:id="@+id/lblLyrics"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="center"
+                android:textColor="@color/colorTrackListText"
+                android:textAppearance="@style/Base.TextAppearance.AppCompat.Medium"
+                android:padding="10dp"/>
+
+        </ScrollView>
+
+    </FrameLayout>
 
     <LinearLayout
         android:layout_width="match_parent"
@@ -21,6 +45,14 @@
         android:orientation="vertical"
         android:padding="10dp"
         android:background="@color/colorPrimary">
+
+        <Button
+            android:visibility="gone"
+            style="?android:attr/buttonBarNeutralButtonStyle"
+            android:id="@+id/btnShowHideLyrics"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/btn_show_lyrics"/>
 
         <TextView
             android:id="@+id/lblTrackName"

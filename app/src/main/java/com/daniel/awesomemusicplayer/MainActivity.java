@@ -1,35 +1,33 @@
 package com.daniel.awesomemusicplayer;
 
 import android.Manifest;
-import android.content.BroadcastReceiver;
 import android.content.ComponentName;
 import android.content.ContentResolver;
-import android.content.Context;
 import android.content.Intent;
 import android.content.ServiceConnection;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.database.Cursor;
-import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.IBinder;
 import android.provider.MediaStore;
-import android.support.annotation.DrawableRes;
-import android.support.annotation.IdRes;
 import android.support.annotation.NonNull;
 import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
 import android.view.View;
 import android.widget.AdapterView;
+import android.widget.Button;
 import android.widget.ImageView;
 import android.widget.ListView;
+import android.widget.ScrollView;
 import android.widget.SeekBar;
 import android.widget.TextView;
 import android.widget.Toast;
 
 import com.bumptech.glide.Glide;
+import com.daniel.awesomemusicplayer.networking.LyricsFinder;
 import com.daniel.awesomemusicplayer.service.MusicPlayerService;
 import com.daniel.awesomemusicplayer.service.MusicServiceCallback;
 import com.daniel.awesomemusicplayer.tracks.RepeatMode;
@@ -38,8 +36,6 @@ import com.daniel.awesomemusicplayer.tracks.TrackAdapter;
 import com.daniel.awesomemusicplayer.util.Utils;
 
 import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Comparator;
 
 /**
  * This is the app's Main Activity.
@@ -104,7 +100,7 @@ public class MainActivity extends AppCompatActivity implements MusicServiceCallb
 
     /**
      * Is the service running?
-     * A flag used to decide whether to stop the service in onStop
+     * A flag used to decide whether to stopTask the service in onStop
      */
     private boolean serviceRunning;
 
@@ -114,12 +110,20 @@ public class MainActivity extends AppCompatActivity implements MusicServiceCallb
     /** The repeat mode on the service */
     private RepeatMode repeatMode;
 
+    /** Lyrics parser */
+    private LyricsFinder lyricsFinder;
+
+    /** Are the lyrics visible? */
+    private boolean lyricsVisible;
+
     /** UI components */
     private ListView lstTracks;
     private ImageView imgAlbum, btnPrevious, btnPlay,
             btnNext, btnStop, btnShuffle, btnRepeat;
-    private TextView lblPosition, lblDuration, lblTrackName;
+    private TextView lblPosition, lblDuration, lblTrackName, lblLyrics;
     private SeekBar skbrSlider;
+    private Button btnShowHideLyrics;
+    private ScrollView scrLyricsPanel;
 
     /** Shared Preferences */
     private SharedPreferences prefs;
@@ -163,6 +167,9 @@ public class MainActivity extends AppCompatActivity implements MusicServiceCallb
         lblDuration = findViewById(R.id.lblDuration);
         lblTrackName = findViewById(R.id.lblTrackName);
         skbrSlider = findViewById(R.id.skbrSlider);
+        btnShowHideLyrics = findViewById(R.id.btnShowHideLyrics);
+        lblLyrics = findViewById(R.id.lblLyrics);
+        scrLyricsPanel = findViewById(R.id.scrLyricsPanel);
 
         // Initialize data from shared preferences
         prefs = getSharedPreferences(PREFS_KEY, MODE_PRIVATE);
@@ -171,7 +178,34 @@ public class MainActivity extends AppCompatActivity implements MusicServiceCallb
         shuffleEnabled = prefs.getBoolean(KEY_SHUFFLE_ON, false);
         repeatMode = RepeatMode.values()[prefs.getInt(KEY_REPEAT_MODE, 0)];
 
+        // Initialize the lyrics finder
+        lyricsFinder = new LyricsFinder(new LyricsFinder.LyricsFinderListener() {
+            @Override
+            public void onResult(String result) {
+                lblLyrics.setText(result);
+                scrLyricsPanel.setVisibility(View.VISIBLE);
+                btnShowHideLyrics.setVisibility(View.VISIBLE);
+                btnShowHideLyrics.setText(R.string.btn_hide_lyrics);
+                lyricsVisible = true;
+            }
+        });
+
         // -- Prepare listeners
+
+        btnShowHideLyrics.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                if (lyricsVisible) {
+                    btnShowHideLyrics.setText(R.string.btn_show_lyrics);
+                    scrLyricsPanel.setVisibility(View.GONE);
+                    lyricsVisible = false;
+                } else {
+                    btnShowHideLyrics.setText(R.string.btn_hide_lyrics);
+                    scrLyricsPanel.setVisibility(View.VISIBLE);
+                    lyricsVisible = true;
+                }
+            }
+        });
 
         lstTracks.setOnItemClickListener(new AdapterView.OnItemClickListener() {
             @Override
@@ -201,7 +235,7 @@ public class MainActivity extends AppCompatActivity implements MusicServiceCallb
         btnStop.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                // Stop button clicked, stop the playback on the service
+                // Stop button clicked, stopTask the playback on the service
                 if (!serviceBound) return;
                 musicPlayerService.stop();
                 serviceRunning = false;
@@ -298,14 +332,14 @@ public class MainActivity extends AppCompatActivity implements MusicServiceCallb
     protected void onStop() {
         super.onStop();
 
-        // Unbind the service, don't stop it just yet
+        // Unbind the service, don't stopTask it just yet
         if (serviceBound) {
             musicPlayerService.setCallback(null);
             unbindService(musicServiceConnection);
             serviceBound = false;
         }
 
-        // If the media player and the activity are stopped - stop the service and close the basta
+        // If the media player and the activity are stopped - stopTask the service and close the basta
         if (!serviceRunning) {
 
             // Save preferences
@@ -349,8 +383,19 @@ public class MainActivity extends AppCompatActivity implements MusicServiceCallb
      */
     private void updateUI() {
 
+        // Update the lyrics panel and button
+        if (lblLyrics.getText().toString().length() == 0) {
+            scrLyricsPanel.setVisibility(View.GONE);
+            btnShowHideLyrics.setVisibility(View.GONE);
+        } else {
+            lyricsVisible = true;
+            scrLyricsPanel.setVisibility(View.VISIBLE);
+            btnShowHideLyrics.setVisibility(View.VISIBLE);
+            btnShowHideLyrics.setText(R.string.btn_hide_lyrics);
+        }
+
+        // Pull data from service
         if (serviceBound) {
-            // Pull data from service
             timerRunning = musicPlayerService.isPlaying();
             trackTime = timerRunning
                     ? musicPlayerService.getPosition()
@@ -394,8 +439,13 @@ public class MainActivity extends AppCompatActivity implements MusicServiceCallb
 
                 // Load album art image
                 updateAlbumImage(track);
+
+                // If the lyrics are shown, find and display them
+                if (lblLyrics.getText().toString().length() == 0)
+                    lyricsFinder.parse(track);
             }
         }
+
     }
 
     /**
@@ -494,14 +544,6 @@ public class MainActivity extends AppCompatActivity implements MusicServiceCallb
             } while (c.moveToNext());
             c.close();
         }
-
-        // Sort
-//        Collections.sort(tracks, new Comparator<Track>() {
-//            @Override
-//            public int compare(Track t1, Track t2) {
-//                return t1.getTitle().compareToIgnoreCase(t2.getTitle());
-//            }
-//        });
 
         // Pass the track list to the service
         if (serviceBound) {
@@ -632,7 +674,11 @@ public class MainActivity extends AppCompatActivity implements MusicServiceCallb
 
     @Override
     public void onTrackStarted(int trackIndex) {
+
         // Update UI
+        scrLyricsPanel.setVisibility(View.GONE);
+        lblLyrics.setText("");
+        btnShowHideLyrics.setVisibility(View.GONE);
         trackAdapter.notifyDataSetChanged();
         performTrackListSelection(shuffleEnabled);
         timerRunning = true;
@@ -642,6 +688,9 @@ public class MainActivity extends AppCompatActivity implements MusicServiceCallb
         lblDuration.setText(Utils.formatMillis(track.getDuration()));
         lblTrackName.setText(track.getFullTitle());
         btnPlay.setImageDrawable(getDrawable(R.drawable.btn_pause));
+
+        // Find the lyrics and display them
+        lyricsFinder.parse(track);
 
         // Load album image
         updateAlbumImage(track);

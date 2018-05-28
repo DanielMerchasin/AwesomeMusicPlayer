@@ -1,3 +1,5 @@
 <resources>
     <string name="app_name">AwesomeMusicPlayer</string>
+    <string name="btn_show_lyrics">Show Lyrics</string>
+    <string name="btn_hide_lyrics">Hide Lyrics</string>
 </resources>
