@@ -10,6 +10,7 @@ This is a simple music player app for my Android module project. :)
 * Shuffle and repeat functions.
 * Album cover art thumbnail.
 * Equalizer animation to demonstrate a playing track.
+* The service is stopped using the stop (square) button.
 
 ## Main elements used for the app:
 * Service, specifically Bound Service
