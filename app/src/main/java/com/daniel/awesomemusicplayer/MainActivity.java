@@ -113,8 +113,8 @@ public class MainActivity extends AppCompatActivity implements MusicServiceCallb
     /** Lyrics parser */
     private LyricsFinder lyricsFinder;
 
-    /** Are the lyrics visible? */
-    private boolean lyricsVisible;
+    /** Are the lyrics available? */
+    private boolean lyricsAvailable;
 
     /** UI components */
     private ListView lstTracks;
@@ -182,11 +182,15 @@ public class MainActivity extends AppCompatActivity implements MusicServiceCallb
         lyricsFinder = new LyricsFinder(new LyricsFinder.LyricsFinderListener() {
             @Override
             public void onResult(String result) {
-                lblLyrics.setText(result);
-                scrLyricsPanel.setVisibility(View.VISIBLE);
-                btnShowHideLyrics.setVisibility(View.VISIBLE);
-                btnShowHideLyrics.setText(R.string.btn_hide_lyrics);
-                lyricsVisible = true;
+                scrLyricsPanel.setVisibility(View.GONE);
+                if (result != null) {
+                    lblLyrics.setText(result);
+                    btnShowHideLyrics.setText(R.string.btn_lyrics_show);
+                    lyricsAvailable = true;
+                } else {
+                    btnShowHideLyrics.setText(R.string.btn_lyrics_unavailable);
+                    lyricsAvailable = false;
+                }
             }
         });
 
@@ -195,14 +199,15 @@ public class MainActivity extends AppCompatActivity implements MusicServiceCallb
         btnShowHideLyrics.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                if (lyricsVisible) {
-                    btnShowHideLyrics.setText(R.string.btn_show_lyrics);
+                if (!lyricsAvailable)
+                    return;
+
+                if (scrLyricsPanel.getVisibility() == View.VISIBLE) {
+                    btnShowHideLyrics.setText(R.string.btn_lyrics_show);
                     scrLyricsPanel.setVisibility(View.GONE);
-                    lyricsVisible = false;
                 } else {
-                    btnShowHideLyrics.setText(R.string.btn_hide_lyrics);
+                    btnShowHideLyrics.setText(R.string.btn_lyrics_hide);
                     scrLyricsPanel.setVisibility(View.VISIBLE);
-                    lyricsVisible = true;
                 }
             }
         });
@@ -383,18 +388,8 @@ public class MainActivity extends AppCompatActivity implements MusicServiceCallb
      */
     private void updateUI() {
 
-        // Update the lyrics panel and button
-        if (lblLyrics.getText().toString().length() == 0) {
-            scrLyricsPanel.setVisibility(View.GONE);
-            btnShowHideLyrics.setVisibility(View.GONE);
-        } else {
-            lyricsVisible = true;
-            scrLyricsPanel.setVisibility(View.VISIBLE);
-            btnShowHideLyrics.setVisibility(View.VISIBLE);
-            btnShowHideLyrics.setText(R.string.btn_hide_lyrics);
-        }
-
         // Pull data from service
+        Track track = null;
         if (serviceBound) {
             timerRunning = musicPlayerService.isPlaying();
             trackTime = timerRunning
@@ -409,7 +404,7 @@ public class MainActivity extends AppCompatActivity implements MusicServiceCallb
                 performTrackListSelection(true);
 
                 // Update UI components
-                Track track = tracks.get(trackIndex);
+                track = tracks.get(trackIndex);
                 Log.d(LOG_TAG, "Selected track on UI update: " + track);
                 int sliderProgress = (int) (trackTime / (track.getDuration() / 1000.0f) * 100.0f);
                 skbrSlider.setProgress(sliderProgress);
@@ -440,9 +435,14 @@ public class MainActivity extends AppCompatActivity implements MusicServiceCallb
                 // Load album art image
                 updateAlbumImage(track);
 
-                // If the lyrics are shown, find and display them
-                if (lblLyrics.getText().toString().length() == 0)
-                    lyricsFinder.parse(track);
+            }
+        }
+
+        if (track != null) {
+            // If there are no lyrics in the label, find and display them
+            if (lblLyrics.getText().toString().length() == 0) {
+                btnShowHideLyrics.setText(R.string.btn_lyrics_loading);
+                lyricsFinder.parse(track);
             }
         }
 
@@ -678,7 +678,6 @@ public class MainActivity extends AppCompatActivity implements MusicServiceCallb
         // Update UI
         scrLyricsPanel.setVisibility(View.GONE);
         lblLyrics.setText("");
-        btnShowHideLyrics.setVisibility(View.GONE);
         trackAdapter.notifyDataSetChanged();
         performTrackListSelection(shuffleEnabled);
         timerRunning = true;
@@ -690,6 +689,8 @@ public class MainActivity extends AppCompatActivity implements MusicServiceCallb
         btnPlay.setImageDrawable(getDrawable(R.drawable.btn_pause));
 
         // Find the lyrics and display them
+        lyricsAvailable = false;
+        btnShowHideLyrics.setText(R.string.btn_lyrics_loading);
         lyricsFinder.parse(track);
 
         // Load album image

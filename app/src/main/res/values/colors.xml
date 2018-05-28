@@ -8,5 +8,5 @@
     <color name="colorTrackListBackgroundTwo">#232323</color>
     <color name="colorTrackListDivider">#AFAFAF</color>
     <color name="colorTrackListText">#DCDCDC</color>
-    <color name="colorLyricsPanelBackground">#CC2A2A2A</color>
+    <color name="colorLyricsPanelBackground">#cc0a0a0a</color>
 </resources>

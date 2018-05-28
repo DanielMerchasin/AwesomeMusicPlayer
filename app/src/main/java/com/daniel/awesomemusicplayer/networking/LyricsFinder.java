@@ -80,8 +80,6 @@ public class LyricsFinder {
      */
     private String extractLyrics(String data) {
 
-        Log.d(LOG_TAG, "Extracting lyrics from data: " + data);
-
         String find = ". -->";
 
         int index = data.indexOf(find);
@@ -90,8 +88,6 @@ public class LyricsFinder {
             int startPoint = index + find.length();
 
             String rawText = data.substring(startPoint, data.indexOf("</div>", startPoint));
-
-            Log.d(LOG_TAG, "Raw text: " + rawText);
 
             // Convert HTML code to plain text
             return Utils.translateSpecialHTMLCharacters(rawText)

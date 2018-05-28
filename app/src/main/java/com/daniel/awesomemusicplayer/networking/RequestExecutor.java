@@ -33,7 +33,6 @@ public class RequestExecutor extends AsyncTask<String, Void, String> {
             con.setRequestMethod("GET");
             con.setRequestProperty("Content-Type", "text/html");
             con.setRequestProperty("User-Agent", "Mozilla/5.0 (Windows NT 6.2; WOW64; rv:43.0) Gecko/20100101 Firefox/43.0");
-//            con.setUseCaches(false);
             con.connect();
             resultCode = con.getResponseCode();
 
@@ -44,7 +43,6 @@ public class RequestExecutor extends AsyncTask<String, Void, String> {
 
             BufferedReader input = null;
             try {
-                Log.d(LOG_TAG, "Reading data from the webpage...");
                 input = new BufferedReader(new InputStreamReader(con.getInputStream()));
                 String line;
                 while (go && (line = input.readLine()) != null)
@@ -55,8 +53,6 @@ public class RequestExecutor extends AsyncTask<String, Void, String> {
             }
 
             String result = sb.toString();
-
-            Log.d(LOG_TAG, "Response: " + result);
 
             if (go && requestListener != null)
                 return requestListener.doOnBackgroundThread(result);
@@ -72,7 +68,7 @@ public class RequestExecutor extends AsyncTask<String, Void, String> {
 
     @Override
     protected void onPostExecute(String s) {
-        if (go && s != null && requestListener != null)
+        if (go && requestListener != null)
             requestListener.doOnUIThread(s);
     }
 

@@ -33,7 +33,10 @@
                 android:gravity="center"
                 android:textColor="@color/colorTrackListText"
                 android:textAppearance="@style/Base.TextAppearance.AppCompat.Medium"
-                android:padding="10dp"/>
+                android:paddingStart="10dp"
+                android:paddingEnd="10dp"
+                android:paddingTop="30dp"
+                android:paddingBottom="30dp"/>
 
         </ScrollView>
 
@@ -47,12 +50,12 @@
         android:background="@color/colorPrimary">
 
         <Button
-            android:visibility="gone"
             style="?android:attr/buttonBarNeutralButtonStyle"
             android:id="@+id/btnShowHideLyrics"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="@string/btn_show_lyrics"/>
+            android:background="@color/colorTrackListBackgroundTwo"
+            android:text="@string/btn_lyrics_unavailable"/>
 
         <TextView
             android:id="@+id/lblTrackName"
@@ -64,7 +67,8 @@
             android:textAlignment="center"
             android:textAppearance="@style/Base.TextAppearance.AppCompat.Medium"
             android:textColor="@android:color/white"
-            android:text="Song Name"/>
+            android:text="Song Name"
+            android:paddingTop="5dp"/>
 
         <LinearLayout
             android:layout_width="match_parent"
